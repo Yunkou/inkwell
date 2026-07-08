@@ -610,49 +610,95 @@ document.getElementById('btn-save-summary')?.addEventListener('click', function(
 </html>`;
 }
 
-// ===== Main Execution =====
-// Check if content has CJK characters that takumi cannot render
-const allText = JSON.stringify(data);
-if (hasCJK(allText)) {
-  console.log('CJK characters detected — using HTML fallback for summary card (takumi lacks CJK fonts)');
-} else {
-  // Attempt takumi PNG generation for pure English content
-  try {
-    const { render } = await import('takumi-js');
+// ===== Summary Card Generation (takumi with CJK font support) =====
+async function findCJKFont() {
+  const { existsSync, readFileSync } = await import('node:fs');
+  // Search system CJK font paths (macOS, Linux, Windows)
+  const candidates = [
+    { path: '/System/Library/Fonts/Supplemental/Songti.ttc', name: 'Songti SC' },
+    { path: '/System/Library/Fonts/Supplemental/Arial Unicode.ttf', name: 'Arial Unicode MS' },
+    { path: '/Library/Fonts/Arial Unicode.ttf', name: 'Arial Unicode MS' },
+    { path: '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc', name: 'Noto Sans CJK SC' },
+    { path: '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc', name: 'Noto Sans CJK SC' },
+    { path: '/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc', name: 'Noto Sans CJK SC' },
+    { path: 'C:\\Windows\\Fonts\\msyh.ttc', name: 'Microsoft YaHei' },
+    { path: 'C:\\Windows\\Fonts\\simsun.ttc', name: 'SimSun' },
+  ];
+  for (const c of candidates) {
+    if (existsSync(c.path)) {
+      try {
+        return { name: c.name, data: readFileSync(c.path) };
+      } catch (_) { /* continue */ }
+    }
+  }
+  return null;
+}
+
+let summaryPngBase64 = null;
+
+try {
+  const cjkFont = await findCJKFont();
+  if (cjkFont) {
+    const core = await import('@takumi-rs/core');
+    const htmlHelper = await import('takumi-js/helpers/html');
+
+    const needsCJK = hasCJK(JSON.stringify(data));
+    const fonts = [
+      { name: 'Charter', data: cjkFont.data, weight: 400 },
+      { name: 'Charter', data: cjkFont.data, weight: 700 },
+    ];
+    if (needsCJK) {
+      fonts.push(
+        { name: cjkFont.name, data: cjkFont.data, weight: 400 },
+        { name: cjkFont.name, data: cjkFont.data, weight: 700 },
+        { name: 'Songti SC', data: cjkFont.data, weight: 400 },
+        { name: 'Songti SC', data: cjkFont.data, weight: 700 },
+      );
+    }
+
+    const renderer = new core.Renderer({
+      fonts,
+      loadDefaultFonts: true,
+    });
+
+    const titleFont = needsCJK
+      ? `font-family:${cjkFont.name},'Songti SC',serif`
+      : `font-family:Charter,Georgia,serif`;
+    const bodyFont = needsCJK
+      ? `font-family:${cjkFont.name},'PingFang SC',-apple-system,sans-serif`
+      : `font-family:Charter,Georgia,serif`;
+
     const pointsHtml = (data.summary_points || data.conclusions.map(c => c.point))
       .slice(0, 5)
-      .map((p, i) => `<li style="font-family:Charter,Georgia,serif;font-size:22px;color:#3d3d3a;margin-bottom:12px;line-height:1.4;padding-left:8px;border-left:3px solid #1B365D;">${escapeHtml(p)}</li>`)
+      .map((p, i) => `<li style="${bodyFont};font-size:22px;color:#3d3d3a;margin-bottom:14px;line-height:1.5;padding-left:10px;border-left:3px solid #1B365D;">${escapeHtml(p)}</li>`)
       .join('');
 
-    const cardHtml = `<div style="width:1200px;height:630px;background:#f5f4ed;display:flex;flex-direction:column;justify-content:center;padding:80px 100px;font-family:Charter,Georgia,serif;box-sizing:border-box;">
+    const cardHtml = `<div style="width:1200px;height:630px;background:#f5f4ed;display:flex;flex-direction:column;justify-content:center;padding:80px 100px;box-sizing:border-box;">
       <div style="font-size:14px;color:#6b6a64;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;font-family:-apple-system,sans-serif;">Report Summary</div>
-      <h1 style="font-size:42px;font-weight:500;color:#141413;margin:0 0 40px 0;line-height:1.15;">${escapeHtml(data.meta?.title || 'Report')}</h1>
+      <h1 style="${titleFont};font-size:42px;font-weight:700;color:#141413;margin:0 0 40px 0;line-height:1.2;">${escapeHtml(data.meta?.title || 'Report')}</h1>
       <ul style="list-style:none;padding:0;margin:0;">${pointsHtml}</ul>
       <div style="margin-top:40px;font-size:14px;color:#6b6a64;font-family:-apple-system,sans-serif;">${escapeHtml(data.meta?.date || '')}</div>
     </div>`;
 
-    const image = await render(cardHtml, { width: 1200, height: 630 });
-    const summaryPngBase64 = `data:image/png;base64,${image.toString('base64')}`;
-    console.log('Summary card PNG generated successfully');
-
-    // Build HTML with takumi PNG
-    console.log('Assembling HTML report...');
-    const htmlWithPng = buildHtml(data, diagramResults).replace(
-      '<div class="summary-card-fallback"',
-      `<div class="summary-card" style="margin-bottom:16px;"><img id="summary-img" src="${summaryPngBase64}" alt="Report Summary" style="max-width:100%;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.04);" /></div>\n<div class="summary-card-fallback" style="display:none;"`,
-    );
-    writeFileSync(outputPath, htmlWithPng, 'utf-8');
-    console.log(`Report written to: ${outputPath}`);
-    console.log(`Size: ${(htmlWithPng.length / 1024).toFixed(1)} KB`);
-    process.exit(0);
-  } catch (err) {
-    console.warn('takumi summary card failed (non-fatal):', err.message);
+    const parsed = htmlHelper.fromHtml(cardHtml);
+    const image = await renderer.render(parsed.node, { width: 1200, height: 630 });
+    summaryPngBase64 = `data:image/png;base64,${image.toString('base64')}`;
+    console.log(`Summary card PNG generated successfully (CJK: ${needsCJK ? 'yes' : 'no'}, font: ${cjkFont.name})`);
   }
+} catch (err) {
+  console.warn('takumi summary card failed (non-fatal):', err.message);
 }
 
-// Fallback: HTML summary card (also used for CJK content)
+// Build final HTML
 console.log('Assembling HTML report...');
-const html = buildHtml(data, diagramResults);
+let html = buildHtml(data, diagramResults);
+if (summaryPngBase64) {
+  // Inject PNG image into summary section, hide fallback
+  html = html.replace(
+    '<div class="summary-card-fallback"',
+    `<div class="summary-card" style="margin-bottom:16px;"><img id="summary-img" src="${summaryPngBase64}" alt="Report Summary" style="max-width:100%;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.04);" /></div>\n<div class="summary-card-fallback" style="display:none;"`,
+  );
+}
 writeFileSync(outputPath, html, 'utf-8');
 console.log(`Report written to: ${outputPath}`);
 console.log(`Size: ${(html.length / 1024).toFixed(1)} KB`);

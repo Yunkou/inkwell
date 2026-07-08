@@ -105,11 +105,11 @@ Tell the user: "报告已生成并打开。包含 X 个章节、Y 张图表。�
 - **Whisper shadow only.** For elevated elements, use `box-shadow: 0 4px 24px rgba(0,0,0,0.04)`. Never hard shadows. Never ring shadow + border combination on the same element.
 - **All grays warm-toned.** No cool blue-grays. Every gray has a yellow-brown undertone.
 
-### CJK Content Handling
+### CJK Font Support
 
-- **takumi-js cannot render Chinese/Japanese/Korean characters** (no CJK fonts in its Rust font-kit stack). The generator auto-detects CJK content and uses an HTML fallback summary card instead of a takumi PNG.
-- English-only reports still get the takumi PNG summary card.
-- The HTML fallback summary card renders perfectly in-browser where CJK fonts are available.
+- The generator automatically detects CJK content and loads a system CJK font (Songti SC on macOS, Noto Sans CJK on Linux, Microsoft YaHei on Windows) into takumi for rendering the summary card PNG.
+- If no system CJK font is found, falls back to the HTML summary card which renders perfectly in-browser.
+- English-only reports use the default Charter/Georgia serif fonts in takumi.
 
 ### Component Patterns
 
