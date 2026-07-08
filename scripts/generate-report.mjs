@@ -65,10 +65,35 @@ function renderDiagram(code) {
   }
 }
 
+// Detect xychart blocks whose source contains constructs that beautiful-mermaid
+// silently ignores. Catching these at render time gives the user immediate,
+// actionable feedback (without this, the chart renders with axes+grid but no
+// data, which is the most common "why is my line missing?" complaint).
+function lintXychartSource(code, label) {
+  if (!/^\s*xychart(-beta)?\b/im.test(code)) return;
+  const lines = code.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // `line "label" [...]` / `bar "label" [...]`  — parser only matches `line\s+\[`
+    if (/^\s*(line|bar)\s+["\'][^"\']*["\']\s*\[/i.test(line)) {
+      console.warn(`  ⚠ ${label}: line ${i+1} has a quoted label before the data array, which beautiful-mermaid ignores:`);
+      console.warn(`      ${line.trim()}`);
+      console.warn(`      Fix: drop the quoted label — hover tooltips are auto-generated. See references/diagrams.md §3.2.`);
+    }
+    // `rect` keyword — not supported in beautiful-mermaid
+    if (/^\s*rect\b/i.test(line)) {
+      console.warn(`  ⚠ ${label}: line ${i+1} uses \`rect\`, which is not a supported keyword in beautiful-mermaid:`);
+      console.warn(`      ${line.trim()}`);
+      console.warn(`      Fix: use a second \`line\` with constant values, or split into multiple charts. See references/diagrams.md §3.2.`);
+    }
+  }
+}
+
 // Pre-render all diagrams
 const diagramResults = new Map();
 
 if (data.overview_diagram) {
+  lintXychartSource(data.overview_diagram, 'overview diagram');
   const result = renderDiagram(data.overview_diagram);
   diagramResults.set('overview', result);
   if (!result.success) {
@@ -81,6 +106,7 @@ for (let ci = 0; ci < data.chapters.length; ci++) {
   if (chapter.diagrams) {
     for (let di = 0; di < chapter.diagrams.length; di++) {
       const key = `ch${ci}-d${di}`;
+      lintXychartSource(chapter.diagrams[di], `chapter ${ci+1} diagram ${di+1}`);
       const result = renderDiagram(chapter.diagrams[di]);
       diagramResults.set(key, result);
       if (!result.success) {

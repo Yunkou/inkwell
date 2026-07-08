@@ -69,6 +69,24 @@ Create a JSON object following this schema:
 - Describe architecture, flows, relationships, timelines, comparisons
 - Remember: **diagrams are always more readable than text**
 
+**XY chart (`xychart-beta`) is a first-class citizen in this skill** — use it for any
+time-series, ranking, or category-vs-number comparison. However, `beautiful-mermaid`
+parses a **stricter subset** of Mermaid's xychart grammar than the official Mermaid CLI.
+Lines that are not recognized are **silently dropped** (the chart renders with axes
+and grid but no data). Two specific gotchas to avoid:
+
+- `line "label" [...]` — the parser only matches `line [...]`; the quoted label
+  causes the whole line to be ignored. Drop the label (hover tooltips come for free).
+- `rect "region" [x1, y1, x2, y2]` — `rect` is not a recognized keyword. To shade
+  a region, use a second `line` with constant values, or split into separate charts,
+  or annotate with prose.
+
+For the full grammar, the silent-failure catalogue, and copy-pasteable templates
+(see **Simple Bar Chart**, **Line Chart**, **Bar + Line Overlay**, **Horizontal Bars**,
+**Multiple Bar Series**, **Dual Lines**, **Categorical X-Axis**, **Numeric X-Axis**),
+read `references/diagrams.md`. The "Pre-flight Checklist" at the end of that file
+should be run mentally before generating a report.
+
 **Markdown in chapter content:**
 - `## ` → 18px H3 (sub-section, 章节内小标题)
 - `### ` → 18px H3 (alternative form)

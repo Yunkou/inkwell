@@ -227,6 +227,29 @@ if (strict && chapterCount > 0 && mermaidCount < chapterCount) {
 }
 
 // ───────────────────────────────────────────────────────────────
+// 6. XY chart silent-failure detection
+// ───────────────────────────────────────────────────────────────
+section('6. XY chart integrity');
+// Detect any xychart SVG: presence of `data-xychart-colors` attribute (set by
+// beautiful-mermaid) is a reliable marker of an xychart SVG, vs graph/SVG.
+const xychartSvgs = (html.match(/<svg[^>]*data-xychart-colors="\d+"[^>]*>/g) || []).length;
+const xychartLinePaths = (html.match(/<path[^>]*class="xychart-line [^"]/g) || []).length;
+const xychartBarPaths  = (html.match(/<path[^>]*class="xychart-bar [^"]/g) || []).length;
+const xychartSeriesCount = xychartLinePaths + xychartBarPaths;
+console.log(`  ${c('dim',`${xychartSvgs} xychart SVG(s), ${xychartLinePaths} line path(s), ${xychartBarPaths} bar path(s)`)}`);
+if (xychartSvgs > 0 && xychartSeriesCount === 0) {
+  // xychart rendered axes + grid but no data series — the classic
+  // "line \"label\" [...]" or "rect" silent-failure mode.
+  console.log(`  ${c('red','✗')} ${xychartSvgs} xychart SVG(s) have NO data series — likely silent parser failure`);
+  console.log(`  ${c('dim','    Common cause: `line \"label\" [..]` or `rect \"region\" [..]` — not supported by beautiful-mermaid.')}`);
+  console.log(`  ${c('dim','    See references/diagrams.md §3.2 for the supported grammar.')}`);
+  add('error', `XY chart silent failure: ${xychartSvgs} xychart(s) rendered without any line/bar series`);
+}
+if (xychartSvgs === 0) {
+  console.log(`  ${c('dim','no xychart blocks present')}`);
+}
+
+// ───────────────────────────────────────────────────────────────
 // Summary
 // ───────────────────────────────────────────────────────────────
 console.log(`\n${c('bold', 'Summary')}`);
