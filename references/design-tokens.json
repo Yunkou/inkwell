@@ -1,0 +1,111 @@
+{
+  "$schema": "https://inkwell.dev/schemas/design-tokens.v1.json",
+  "name": "Editorial Design Tokens",
+  "version": "1.0.0",
+  "description": "Warm-parchment editorial design system inlined into every report by the generator.",
+  "color": {
+    "parchment": { "value": "#f5f4ed", "role": "Page background (never pure white)" },
+    "ivory":     { "value": "#faf9f5", "role": "Card / container surface" },
+    "warmSand":  { "value": "#e8e6dc", "role": "Button default / interactive surface" },
+    "brand":     { "value": "#1B365D", "role": "Ink-blue accent (only chromatic color, <= 5% surface)" },
+    "brandLight":{ "value": "#2D5A8A", "role": "Links on dark surfaces" },
+    "brandTint": { "value": "#EEF2F7", "role": "Tag background, code chip" },
+    "brandTint2":{ "value": "#E4ECF5", "role": "Brand gradient stop" },
+    "brandTint3":{ "value": "#D6E1EE", "role": "Brand gradient end" },
+    "nearBlack": { "value": "#141413", "role": "Primary text" },
+    "darkWarm":  { "value": "#3d3d3a", "role": "Secondary text, body" },
+    "olive":     { "value": "#504e49", "role": "Subtext, captions, lede" },
+    "stone":     { "value": "#6b6a64", "role": "Tertiary, dates, metadata" },
+    "border":    { "value": "#e8e6dc", "role": "Section dividers, card borders" },
+    "borderSoft":{ "value": "#e5e3d8", "role": "Row separators" },
+    "ring":      { "value": "#e0ddd0", "role": "Button ring / focus ring" }
+  },
+  "typography": {
+    "families": {
+      "enSerif": ["Charter", "Georgia", "Palatino", "Times New Roman", "serif"],
+      "cnSerif": ["TsangerJinKai02", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", "serif"],
+      "mono":    ["JetBrains Mono", "SF Mono", "Fira Code", "Consolas", "Monaco", "monospace"],
+      "uiSans":  ["-apple-system", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica", "Arial", "sans-serif"]
+    },
+    "letterSpacing": {
+      "enHeading": "-0.5px",
+      "enSection": "-0.3px",
+      "cjkBody":   "0.35px"
+    },
+    "scale": [
+      { "role": "heroH1",      "size": 64, "weight": 500, "line": 1.05, "color": "nearBlack" },
+      { "role": "sectionTitle","size": 32, "weight": 500, "line": 1.20, "color": "nearBlack" },
+      { "role": "h3",          "size": 18, "weight": 500, "line": 1.30, "color": "nearBlack" },
+      { "role": "h4",          "size": 15, "weight": 500, "line": 1.40, "color": "olive" },
+      { "role": "body",        "size": 16, "weight": 400, "line": 1.55, "color": "darkWarm" },
+      { "role": "tagline",     "size": 20, "weight": 500, "line": 1.40, "color": "olive" },
+      { "role": "lede",        "size": 16, "weight": 500, "line": 1.55, "color": "olive" },
+      { "role": "chapterLead", "size": 16, "weight": 400, "line": 1.55, "color": "darkWarm" },
+      { "role": "caption",     "size": 15, "weight": 400, "line": 1.55, "color": "olive" },
+      { "role": "eyebrow",     "size": 12, "weight": 500, "line": 1.35, "transform": "uppercase", "tracking": "0.4-1.2px", "font": "sans", "color": "brand|stone" },
+      { "role": "label",       "size": 11, "weight": 500, "line": 1.35, "transform": "uppercase", "tracking": "0.4-0.8px", "font": "sans" },
+      { "role": "conclusionNum","size": 28,"weight": 500, "line": 1.00, "color": "brand", "font": "serif" },
+      { "role": "tag",         "size": 12, "weight": 500, "line": 1.35, "tracking": "0.4px", "font": "sans" }
+    ]
+  },
+  "spacing": {
+    "pagePadding":       "88px 64px 120px",
+    "pagePaddingMobile": "48px 20px 64px",
+    "coverBottom":       "56px",
+    "coverPaddingBottom":"40px",
+    "sectionMargin":     "64px",
+    "sectionMarginMobile":"48px",
+    "sectionHeadMargin": "24px",
+    "hairline":          "1px",
+    "conclusionItemPadding": "22px 0",
+    "chapterLeadPadding":    "18px 22px",
+    "diagramWrapPadding":    "28px 24px",
+    "summaryCardPadding":    "56px 48px"
+  },
+  "radii": {
+    "tag":              "2px",
+    "codeChip":         "2px",
+    "chapterLead":      "6px",
+    "diagramWrap":      "8px",
+    "summaryCard":      "12px"
+  },
+  "shadow": {
+    "ring":    "0 0 0 1px var(--border)",
+    "whisper": "0 4px 24px rgba(0,0,0,0.04)"
+  },
+  "mermaid": {
+    "bg":      "#f5f4ed",
+    "fg":      "#141413",
+    "line":    "#504e49",
+    "accent":  "#1B365D",
+    "muted":   "#6b6a64",
+    "surface": "#faf9f5",
+    "border":  "#e8e6dc"
+  },
+  "animation": {
+    "name":     "page-fade-in",
+    "duration": "0.4s",
+    "easing":   "ease-out",
+    "translateY":"6px"
+  },
+  "print": {
+    "pageSize":   "A4",
+    "margin":     "14mm 16mm",
+    "breakAvoid": [".cover", ".section-head", ".chapter-lead", ".diagram-wrap", ".conclusion-item", ".actions-table tr", ".summary-card-fallback"]
+  },
+  "container": {
+    "maxWidth":     "1080px",
+    "paddingBlock": "88px",
+    "paddingInline":"64px"
+  },
+  "antiPatterns": {
+    "sectionLeftBar":     "Do not add border-left to h2 section titles",
+    "serifBold":          "font-weight 700 on serif is forbidden; max 500",
+    "hardShadow":         "Avoid box-shadow with strong alpha",
+    "multiColorBadges":   "Priority badges must use the same brand ramp, no red/green",
+    "centeredHero":       "Cover title must be left-aligned with eyebrow + dot",
+    "pureWhiteBackground":"Background must be parchment #f5f4ed",
+    "italicHeadings":     "Do not italicize serif headings",
+    "coolBlues":          "All grays must be warm-toned (R >= G > B)"
+  }
+}

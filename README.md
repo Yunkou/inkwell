@@ -71,9 +71,33 @@ Inkwell 把原始对话变成：
 # 推荐：通过 skills CLI 安装
 npx skills add Yunkou/inkwell
 
-# 或者直接 clone
+# 或直接 clone
 git clone https://github.com/Yunkou/inkwell.git
-cd inkwell && npm install
+cd inkwell && bash scripts/install.sh
+
+# 验证安装（应该全部 ✓）
+bash scripts/install.sh   # 幂等：再跑一次会跳过已就绪的步骤
+```
+
+> ⚠ Codex `skill-installer` 默认只安装 `SKILL.md`，会把 `scripts/`、`fonts/`、`references/` 丢在身后。请用上面两种方式之一获取完整目录树，再用 `bash scripts/install.sh` 一键就绪。详细原因见 [SKILL.md](SKILL.md) 的 `## Location` 段落。
+
+### 文件结构
+
+```
+inkwell/
+├── SKILL.md                       # skill 入口（AI Agent 读这里）
+├── README.md
+├── package.json                   # 依赖声明（beautiful-mermaid / subset-font / takumi）
+├── scripts/
+│   ├── generate-report.mjs        # 主生成器
+│   ├── verify-report.mjs          # 生成结果校验（结构 + 反模式 + 设计令牌）
+│   └── install.sh                 # 一键安装（含 npm install）
+├── fonts/
+│   ├── LXGWWenKai-Regular.woff2   # 霞鹜文楷（按报告字符子集化、inline 进 HTML）
+│   └── README.md
+└── references/
+    ├── design-tokens.md           # 设计令牌（散文文档）
+    └── design-tokens.json         # 设计令牌（机器可读，verify-report.mjs 读这里）
 ```
 
 ### 使用
