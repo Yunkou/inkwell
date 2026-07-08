@@ -56,14 +56,39 @@ fi
 
 section "3. Bundled font"
 FONT="$SKILL_DIR/fonts/LXGWWenKai-Regular.woff2"
+FONT_TTF_URL="https://github.com/lxgw/LxgwWenkai/releases/download/v1.522/LXGWWenKai-Regular.ttf"
+WOFF2_BIN="$SKILL_DIR/node_modules/.bin/woff2_compress.js"
+
+font_manual_steps() {
+  echo "       Manual install (requires npm install first):"
+  echo "         curl -L -o /tmp/LXGWWenKai-Regular.ttf $FONT_TTF_URL"
+  echo "         node $WOFF2_BIN /tmp/LXGWWenKai-Regular.ttf $FONT"
+}
+
 if [ -f "$FONT" ]; then
   size_kb="$(du -k "$FONT" | cut -f1)"
   ok "fonts/LXGWWenKai-Regular.woff2 (${size_kb} KB)"
 else
-  fail "fonts/LXGWWenKai-Regular.woff2 missing"
-  echo "       download LXGW WenKai (~ 4.6 MB):"
-  echo "       curl -L -o $FONT https://github.com/lxgw/LxgwWenkaiTai/archive/refs/heads/main.tar.gz"
-  exit 1
+  warn "fonts/LXGWWenKai-Regular.woff2 missing — attempting download"
+  mkdir -p "$(dirname "$FONT")"
+  tmp_ttf="$(mktemp /tmp/lxgwwenkai.XXXXXX.ttf)"
+  if curl -fsSL -o "$tmp_ttf" "$FONT_TTF_URL" && [ -s "$tmp_ttf" ]; then
+    if [ -f "$WOFF2_BIN" ] && node "$WOFF2_BIN" "$tmp_ttf" "$FONT" 2>/dev/null && [ -s "$FONT" ]; then
+      size_kb="$(du -k "$FONT" | cut -f1)"
+      ok "downloaded and converted fonts/LXGWWenKai-Regular.woff2 (${size_kb} KB)"
+    else
+      fail "TTF downloaded but woff2 conversion failed"
+      font_manual_steps
+      rm -f "$tmp_ttf"
+      exit 1
+    fi
+    rm -f "$tmp_ttf"
+  else
+    fail "fonts/LXGWWenKai-Regular.woff2 missing and auto-download failed"
+    font_manual_steps
+    rm -f "$tmp_ttf"
+    exit 1
+  fi
 fi
 
 section "4. Design tokens"

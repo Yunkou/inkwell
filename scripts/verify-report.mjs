@@ -41,6 +41,15 @@ const ANSI = {
 };
 const c = (color, s) => `${ANSI[color]}${s}${ANSI.reset}`;
 
+// design-tokens.json uses camelCase keys; generated CSS uses kebab-case vars
+// (e.g. brandLight → --brand-light, brandTint2 → --brand-tint-2).
+function tokenToCssVar(name) {
+  return name
+    .replace(/([a-zA-Z])(\d)/g, '$1-$2')
+    .replace(/([a-z])([A-Z])/g, '$1-$2')
+    .toLowerCase();
+}
+
 const args = process.argv.slice(2);
 const reportPath = args[0];
 const tokensPath = (() => {
@@ -137,7 +146,7 @@ if (tokens?.color) {
   for (const [name, def] of Object.entries(tokens.color)) {
     const hex = def.value?.toLowerCase();
     if (!hex) continue;
-    const varRef = new RegExp(`var\\(--${name.replace(/[A-Z]/g, m => m.toLowerCase())}\\)`, 'i');
+    const varRef = new RegExp(`var\\(--${tokenToCssVar(name)}\\)`, 'i');
     const literal = new RegExp(hex.replace('#', '#'), 'gi');
     if (varRef.test(html) || literal.test(html)) {
       console.log(`  ${c('green','✓')} ${name} = ${hex} (in CSS)`);
