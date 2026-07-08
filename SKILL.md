@@ -93,6 +93,36 @@ open /tmp/report.html
 
 Tell the user: "报告已生成并打开。包含 X 个章节、Y 张图表。点击底部按钮可保存总结图。"
 
+## Design Guidelines
+
+### Visual Hierarchy
+
+- **No side-stripe borders.** Never use `border-left: 3px solid` on section titles, conclusion items, or list items. Use numbered markers (brand-colored numerals), hairline horizontal rules, or typographic contrast instead.
+- **Editorial section openers.** Each major section opens with an eyebrow label (small uppercase sans, stone color) + serif heading + 0.5px hairline rule. This is the Kami editorial pattern — not a left bar.
+- **Numbered conclusions.** Conclusions use CSS counter-based numbers (01, 02, 03...) in brand color, rendered large as visual anchors. This creates clear scan-and-stop points.
+- **Chapter leads in ivory boxes.** Each chapter's one-sentence conclusion sits in a subtle ivory box (`background: var(--ivory); border-radius: 6px`), separating it from body content.
+- **Typographic drama.** Cover heading at 44px, section headings at 26px, body at 16px. Three-level clear size contrast. Serif carries authority, sans carries utility.
+- **Whisper shadow only.** For elevated elements, use `box-shadow: 0 4px 24px rgba(0,0,0,0.04)`. Never hard shadows. Never ring shadow + border combination on the same element.
+- **All grays warm-toned.** No cool blue-grays. Every gray has a yellow-brown undertone.
+
+### CJK Content Handling
+
+- **takumi-js cannot render Chinese/Japanese/Korean characters** (no CJK fonts in its Rust font-kit stack). The generator auto-detects CJK content and uses an HTML fallback summary card instead of a takumi PNG.
+- English-only reports still get the takumi PNG summary card.
+- The HTML fallback summary card renders perfectly in-browser where CJK fonts are available.
+
+### Component Patterns
+
+| Need | Use |
+|------|-----|
+| Major section open | `.section-hed` with eyebrow + h2 + `.rule` |
+| Conclusion list | `.conclusion-item` with `.conclusion-num` + `.conclusion-body` |
+| Chapter thesis | `.chapter-lead` (ivory box, single sentence) |
+| Actions | `.actions-table` (2-column table, priority labels) |
+| Data tables | `table.data-table` (markdown `|` syntax auto-rendered) |
+| Diagrams | `.diagram-wrap` (ivory bg, no border, clean) |
+| Summary card | `.summary-card-fallback` (centered, brand bar bullets) |
+
 ## Design Reference
 
 See `references/kami-design.md` for the full Kami design system tokens, colors, typography, and beautiful-mermaid theme mapping.
