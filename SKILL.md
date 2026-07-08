@@ -1,12 +1,12 @@
 ---
-name: report-skill
-description: Generate polished HTML reports from AI conversations using Pyramid Principle, beautiful-mermaid diagrams, and Kami design system.
+name: inkwell
+description: Generate polished, editorial-style HTML reports from AI conversations using Pyramid Principle, beautiful-mermaid diagrams, LXGW WenKai kaiti font, and editorial typography. Output is a self-contained, single-file HTML with serif-led hierarchy, ink-blue accent, and warm-parchment canvas.
 disable-model-invocation: false
 ---
 
 # Report Skill
 
-Turn any AI conversation or research session into a polished, visual-first HTML report.
+Turn any AI conversation or research session into a polished, editorial-style HTML report. Editorial typography, single ink-blue accent, warm-parchment canvas, every section a numbered editorial spread.
 
 ## When to Use
 
@@ -34,6 +34,8 @@ Create a JSON object following this schema:
     "title": "报告标题",
     "date": "YYYY-MM-DD",
     "summary": "一句话摘要",
+    "author": "可选，作者署名",
+    "source": "可选，来源标注",
     "tags": ["标签1", "标签2"]
   },
   "conclusions": [
@@ -43,8 +45,8 @@ Create a JSON object following this schema:
   "chapters": [
     {
       "title": "章节标题",
-      "conclusion": "本章核心结论（一句话）",
-      "content": "详细内容（支持 markdown: # ## ### - > ** ** ` `）",
+      "conclusion": "本章核心结论（一句话，作为 Thesis 卡片）",
+      "content": "详细内容（支持 markdown: # ## ### - > ** ` ` |）",
       "diagrams": ["mermaid code 1", "mermaid code 2"]
     }
   ],
@@ -67,6 +69,14 @@ Create a JSON object following this schema:
 - Describe architecture, flows, relationships, timelines, comparisons
 - Remember: **diagrams are always more readable than text**
 
+**Markdown in chapter content:**
+- `## ` → 18px H3 (sub-section, 章节内小标题)
+- `### ` → 18px H3 (alternative form)
+- `# ` → 15px olive H4 (sub-sub)
+- `- ` → 列表项
+- `> ` → blockquote（带 brand 左边线）
+- `| col | col | ` → 自动 data-table 渲染
+
 **Flexible mode:** If the content is short (1-2 points, no clear chapter structure), collapse to fewer chapters and merge sections as needed.
 
 ### Step 3: Write JSON and generate report
@@ -85,49 +95,107 @@ cd <project-directory> && node scripts/generate-report.mjs /tmp/report-input.jso
 
 Replace `<project-directory>` with the path to this skill's directory.
 
+The generator automatically:
+- Subset the bundled LXGW WenKai font to the chars used in your report (100-200 KB inlined)
+- Renders diagrams via beautiful-mermaid
+- Renders the summary card as a takumi PNG with the same font
+
 ### Step 4: Open the report
 
 ```bash
 open /tmp/report.html
 ```
 
-Tell the user: "报告已生成并打开。包含 X 个章节、Y 张图表。点击底部按钮可保存总结图。"
+Tell the user: "报告已生成并打开。包含 X 个章节、Y 张图表。"
 
-## Design Guidelines
+## Design Language (Editorial)
 
-### Visual Hierarchy
+### Section Architecture
 
-- **No side-stripe borders.** Never use `border-left: 3px solid` on section titles, conclusion items, or list items. Use numbered markers (brand-colored numerals), hairline horizontal rules, or typographic contrast instead.
-- **Editorial section openers.** Each major section opens with an eyebrow label (small uppercase sans, stone color) + serif heading + 0.5px hairline rule. This is the Kami editorial pattern — not a left bar.
-- **Numbered conclusions.** Conclusions use CSS counter-based numbers (01, 02, 03...) in brand color, rendered large as visual anchors. This creates clear scan-and-stop points.
-- **Chapter leads in ivory boxes.** Each chapter's one-sentence conclusion sits in a subtle ivory box (`background: var(--ivory); border-radius: 6px`), separating it from body content.
-- **Typographic drama.** Cover heading at 44px, section headings at 26px, body at 16px. Three-level clear size contrast. Serif carries authority, sans carries utility.
-- **Whisper shadow only.** For elevated elements, use `box-shadow: 0 4px 24px rgba(0,0,0,0.04)`. Never hard shadows. Never ring shadow + border combination on the same element.
-- **All grays warm-toned.** No cool blue-grays. Every gray has a yellow-brown undertone.
+Every report follows a numbered editorial pattern (auto-numbered by the generator):
 
-### CJK Font Support
+| # | Section | Purpose |
+|---|---------|---------|
+| 01 | Key Findings · 核心结论 | 3-5 numbered conclusions, large brand-blue counter |
+| 02–N | Context / Analysis / Findings / Synthesis / Outlook / Case Study / Deep Dive | Chapters with `Thesis` lead box |
+| N+1 | Next Steps · 行动建议 | Priority-ordered table (P0/P1/P2) |
+| N+2 | Summary Card · 结论摘要 | takumi-generated info card (4 zones: header / hero+metrics / insights / footer) |
 
-- The generator automatically detects CJK content and loads a system CJK font (Songti SC on macOS, Noto Sans CJK on Linux, Microsoft YaHei on Windows) into takumi for rendering the summary card PNG.
-- If no system CJK font is found, falls back to the HTML summary card which renders perfectly in-browser.
-- English-only reports use the default Charter/Georgia serif fonts in takumi.
+### Summary Card (Info Card Design)
+
+The bottom summary card is a 1200x630 PNG generated by takumi, structured as a 4-zone info card:
+
+| Zone | Content | Style |
+|------|---------|-------|
+| **Top eyebrow** | `● REPORT SUMMARY` + meta line (date · author · source) | 12px sans, brand dot, hairline divider below |
+| **Hero + Metrics** | 42px title (regular 400) + tagline on left, 2x2 metrics grid on right (Chapters / Conclusions / Diagrams / Actions) | serif hero at regular weight (avoids takumi bold-rendering artifacts), ivory metric cards with brand-blue numerals |
+| **Key Insights** | 4 bullet points (2 columns), each with brand bar prefix | 18px dark-warm, 1.5px brand bar |
+| **Footer** | `Editorial Report` + date | 11px stone, hairline above |
+
+### Visual Rules
+
+- **Section opener pattern**: `01 · Key Findings` eyebrow (12px sans, brand color, uppercase, letter-spacing 0.4px) + 32px serif section title + 1px hairline rule. Never use a left bar or border.
+- **Numbered conclusions**: counter-based `01`, `02`, `03` in 28px brand-blue serif as a fixed-width left column. Body to the right with serif h3 + olive p.
+- **Chapter Thesis box**: ivory background, 6px radius, blue `THESIS` uppercase eyebrow on top, single-sentence conclusion below.
+- **Hero**: 12px eyebrow with 6px brand-blue dot + 64px serif title + 20px olive tagline + meta row (date · author · source) + tag pills.
+- **Single ink-blue accent (#1B365D)**: never introduce a second chromatic color. No green/red badges, no warm orange. High/medium/low priorities all use the same blue→olive→stone ramp.
+- **Container**: `max-width: 1080px; padding: 88px 64px 120px`. Generous, like editorial landing pages.
+- **All grays warm-toned**. No cool blue-grays. Rule of thumb: R ≈ G > B.
+- **CJK letter-spacing**: 0.35px on body in zh-CN. EN has 0. Body letter-spacing makes Chinese breathe.
+- **CJK font**: LXGW WenKai 霞鹜文楷 (kaiti, screen-optimized, SIL OFL), bundled in `fonts/`, auto-subset per report.
+- **Font-variant-numeric: tabular-nums** for all numbers, dates, percentages.
+- **Tags**: `background: #EEF2F7; color: #1B365D; font-weight: 500; border-radius: 2px; padding: 2px 7px`. NOT Bootstrap's chunky 6px radius uppercase 600 weight.
+- **No italic, no bold > 500 in serif**. Headings 500, body 400. Design philosophy: no synthetic bold.
+- **Whisper shadow only**: `0 4px 24px rgba(0,0,0,0.04)` on summary card. No hard drop shadows.
+- **Print-friendly**: A4 with 14mm × 16mm margins, color-adjust exact, breaks inside sections avoided.
+- **Page entry animation**: `fadeIn 0.4s ease-out` on `.page`. (CSS only — headless screenshot tools need `--virtual-time-budget >= 500` to capture final state.)
 
 ### Component Patterns
 
 | Need | Use |
 |------|-----|
-| Major section open | `.section-hed` with eyebrow + h2 + `.rule` |
+| Major section open | `.section-head` with `.section-num` + `.section-title` + `.rule` |
 | Conclusion list | `.conclusion-item` with `.conclusion-num` + `.conclusion-body` |
-| Chapter thesis | `.chapter-lead` (ivory box, single sentence) |
-| Actions | `.actions-table` (2-column table, priority labels) |
-| Data tables | `table.data-table` (markdown `|` syntax auto-rendered) |
-| Diagrams | `.diagram-wrap` (ivory bg, no border, clean) |
-| Summary card | `.summary-card-fallback` (centered, brand bar bullets) |
+| Chapter thesis | `.chapter-lead` (ivory box with `THESIS` label) |
+| Actions | `.actions-table` (110px priority column + body) |
+| Data tables | `table.data-table` (markdown `|` syntax auto-rendered, 11px uppercase sans header) |
+| Diagrams | `.diagram-wrap` (ivory bg, 8px radius, 28px padding) |
+| Summary card | `.summary-card-fallback` (12px radius, 56px padding, brand-bar bullets, sc-foot metadata row) |
+| Inline code | `code.ic` (brand-tint bg, 2px radius, mono) |
+| Quote | `blockquote.bq` (2px brand left border) |
+
+### Anti-Patterns (what NOT to do)
+
+- Left stripe on section titles (`border-left: 3px solid var(--brand)` on h2)
+- Bold > 500 on serif text (`font-weight: 700`)
+- Hard drop shadows (`box-shadow: 0 4px 8px rgba(0,0,0,0.25)`)
+- Multi-color badges (red/green/yellow priority tags)
+- Centered hero titles (left-align with eyebrow dot above)
+- Pure white background (must be `var(--parchment)` #f5f4ed)
+- Generic sans hero (must be serif 64px+)
+- Italic in headings
+- Cool blue-gray tones
+- Centered summary card content (Editorial layouts keep things left-aligned with hierarchy)
+- Single-paragraph summary (use the 4-zone info card structure)
+
+## Bundled Font
+
+The skill ships with `fonts/LXGWWenKai-Regular.woff2` (霞鹜文楷, SIL OFL). The generator subsets this to the chars actually used in your report and inlines it as base64 inside the generated HTML. This keeps reports self-contained and consistent across platforms.
+
+See `fonts/README.md` for details and how to swap to a different font.
+
+## CJK Font Fallback
+
+If the bundled font is missing, the generator falls back to system CJK fonts (Songti SC on macOS, Noto Sans CJK on Linux, Microsoft YaHei on Windows). The summary card PNG also uses this fallback chain.
 
 ## Design Reference
 
-See `references/kami-design.md` for the full Kami design system tokens, colors, typography, and beautiful-mermaid theme mapping.
+See `references/design-tokens.md` for the full design tokens, colors, typography, and beautiful-mermaid theme mapping.
 
 ## Dependencies
 
 - Node.js ≥ 18
 - `npm install` (run once in this directory)
+  - `beautiful-mermaid` — diagram SVG generation
+  - `subset-font` — per-report font subsetting
+  - `takumi-js` — summary card PNG generation

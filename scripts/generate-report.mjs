@@ -31,14 +31,18 @@ for (const field of required) {
 console.log(`Loaded report: "${data.meta?.title || 'Untitled'}"`);
 console.log(`Chapters: ${data.chapters.length}, Conclusions: ${data.conclusions.length}`);
 
-// ===== Kami Theme =====
-// NOTE: Must match CSS :root variables in buildHtml() below.
-const KAMI_THEME = {
-  bg: '#f5f4ed',
-  fg: '#141413',
-  line: '#504e49',
-  accent: '#1B365D',
-  muted: '#6b6a64',
+// ===== Editorial Diagram Theme (Tokyo Night Light inspired) =====
+// Inspired by tokyo-night-light but tuned for our warm-parchment editorial palette.
+// We pass `bg` explicitly (instead of transparent) so the internal color-mix()
+// derivatives (subgraph tints, node fills, faint lines) compute against the
+// ivory surface we actually render on.
+const EDITORIAL_THEME = {
+  bg: '#faf9f5',           // ivory — matches .diagram-wrap surface
+  fg: '#2e3a5f',           // deep ink-blue for node text and labels
+  line: '#1B365D',         // brand ink-blue for edges, strokes, arrows
+  accent: '#1B365D',       // brand ink-blue for accent strokes / node borders
+  muted: '#7a7a72',        // warm stone — blends with parchment, never cool gray
+  // surface, border not used by renderMermaidSVG; kept for CSS :root parity
   surface: '#faf9f5',
   border: '#e8e6dc',
 };
@@ -54,7 +58,7 @@ function sanitizeSvg(svg) {
 
 function renderDiagram(code) {
   try {
-    const svg = renderMermaidSVG(code, { ...KAMI_THEME, transparent: true });
+    const svg = renderMermaidSVG(code, { ...EDITORIAL_THEME, transparent: false });
     return { success: true, svg: sanitizeSvg(svg) };
   } catch (err) {
     return { success: false, error: err.message };
@@ -96,6 +100,35 @@ function escapeHtml(str) {
 function hasCJK(text) {
   return /[一-鿿㐀-䶿　-〿＀-￯가-힯぀-ゟ゠-ヿ]/.test(text || '');
 }
+// ===== Bundled Font (LXGW WenKai, ships in fonts/) =====
+async function loadBundledFont() {
+  const { existsSync, readFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const { dirname, resolve } = await import('node:path');
+  const here = dirname(fileURLToPath(import.meta.url));
+  const fontPath = resolve(here, '..', 'fonts', 'LXGWWenKai-Regular.woff2');
+  if (!existsSync(fontPath)) return null;
+  try {
+    return { name: 'LXGW WenKai', path: fontPath, data: readFileSync(fontPath) };
+  } catch (_) { return null; }
+}
+
+async function subsetBundledFont(bundled, text) {
+  if (!bundled) return null;
+  try {
+    const { default: subsetFont } = await import('subset-font');
+    const chars = new Set();
+    for (const c of text) chars.add(c);
+    for (const c of '.,;:!?·…—-()[]{}/\\\'\"`~@#$%^&*+=<>|《》「」『』【】〖〗' + '0123456789') chars.add(c);
+    for (const c of '的一是不了人我在有这个们中大为和国地到以说时要就出会也你对生能而子那') chars.add(c);
+    const subsetBuf = await subsetFont(bundled.data, [...chars].join(''), { targetFormat: 'woff2' });
+    return { name: bundled.name, data: Buffer.from(subsetBuf), sizeKB: subsetBuf.length / 1024 };
+  } catch (e) {
+    console.warn('  Subset font failed, using full bundled font:', e.message);
+    return { name: bundled.name, data: bundled.data, sizeKB: bundled.data.length / 1024 };
+  }
+}
+
 
 function renderMarkdown(text) {
   return text
@@ -104,8 +137,8 @@ function renderMarkdown(text) {
       block = block.trim();
       if (!block) return '';
       if (block.startsWith('### ')) return `<h3>${escapeHtml(block.slice(4))}</h3>`;
-      if (block.startsWith('## ')) return `<h2>${escapeHtml(block.slice(3))}</h2>`;
-      if (block.startsWith('# ')) return `<h1>${escapeHtml(block.slice(2))}</h1>`;
+      if (block.startsWith('## ')) return `<h3>${escapeHtml(block.slice(3))}</h3>`;
+      if (block.startsWith('# ')) return `<h4>${escapeHtml(block.slice(2))}</h4>`;
       if (block.startsWith('- ')) {
         return '<ul>' + block.split('\n').map(line =>
           line.startsWith('- ') ? `<li>${renderInline(line.slice(2))}</li>` : ''
@@ -158,13 +191,21 @@ function buildCover(meta) {
   const tagsHtml = meta.tags?.length
     ? `<div class="cover-tags">${meta.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>`
     : '';
+  const dateStr = escapeHtml(meta.date || '');
+  const authorStr = escapeHtml(meta.author || '');
+  const sourceStr = escapeHtml(meta.source || '');
+  const metaBits = [
+    dateStr && `<span><b>${dateStr}</b></span>`,
+    authorStr && `<span class="sep">·</span><span>by <b>${authorStr}</b></span>`,
+    sourceStr && `<span class="sep">·</span><span><b>${sourceStr}</b></span>`,
+  ].filter(Boolean).join('');
   return `
 <header class="cover">
-  <div class="cover-eyebrow">Research Report</div>
-  ${tagsHtml}
+  <div class="eyebrow"><span class="dot"></span><span>Research Report</span></div>
   <h1>${escapeHtml(meta.title || 'Report')}</h1>
-  <p class="summary">${escapeHtml(meta.summary || '')}</p>
-  <p class="meta">${escapeHtml(meta.date || '')}</p>
+  <p class="tagline">${escapeHtml(meta.summary || '')}</p>
+  ${metaBits ? `<div class="cover-meta">${metaBits}</div>` : ''}
+  ${tagsHtml}
 </header>`;
 }
 
@@ -186,9 +227,9 @@ function buildConclusions(conclusions, overviewDiagram) {
 
   return `
 <section>
-  <div class="section-hed">
-    <div class="section-eyebrow">Key Findings</div>
-    <h2>核心结论</h2>
+  <div class="section-head">
+    <p class="section-num">01 · Key Findings</p>
+    <h2 class="section-title">核心结论</h2>
     <div class="rule"></div>
   </div>
   ${diagram}
@@ -196,7 +237,7 @@ function buildConclusions(conclusions, overviewDiagram) {
 </section>`;
 }
 
-function buildChapter(chapter, index, diagrams) {
+function buildChapter(chapter, index, diagrams, totalChapters) {
   const diagramKeys = chapter.diagrams?.map((_, di) => `ch${index}-d${di}`) || [];
   const diagramHtmls = diagramKeys.map(key => {
     const result = diagrams.get(key);
@@ -207,24 +248,25 @@ function buildChapter(chapter, index, diagrams) {
   }).join('\n');
 
   const contentHtml = renderMarkdown(chapter.content || '');
+  const num = String(index + 1).padStart(2, '0');
+  const labelMap = ['Context', 'Analysis', 'Findings', 'Synthesis', 'Outlook', 'Case Study', 'Deep Dive'];
+  const label = labelMap[index] || 'Chapter';
 
   return `
 <section>
-  <div class="section-hed">
-    <div class="section-eyebrow">Chapter ${String(index + 1).padStart(2, '0')}</div>
-    <h2>${escapeHtml(chapter.title || `Chapter ${index + 1}`)}</h2>
+  <div class="section-head">
+    <p class="section-num">${num} · ${label}</p>
+    <h2 class="section-title">${escapeHtml(chapter.title || `Chapter ${index + 1}`)}</h2>
     <div class="rule"></div>
   </div>
-  <div class="chapter-lead">
-    <strong>${escapeHtml(chapter.conclusion || '')}</strong>
-  </div>
+  ${chapter.conclusion ? `<div class="chapter-lead"><span class="thesis-label">Thesis</span>${escapeHtml(chapter.conclusion)}</div>` : ''}
   ${diagramHtmls}
   <div class="chapter-content">${contentHtml}</div>
 </section>`;
 }
 
-function buildActions(actions) {
-  const priorityLabel = { high: 'P0 紧急', medium: 'P1 重要', low: 'P2 持续' };
+function buildActions(actions, sectionNum) {
+  const priorityLabel = { high: 'P0 · Urgent', medium: 'P1 · Important', low: 'P2 · Ongoing' };
   const rows = actions.map(a => `
   <tr>
     <td class="act-priority ${a.priority || 'medium'}">${priorityLabel[a.priority] || 'P1'}</td>
@@ -234,30 +276,38 @@ function buildActions(actions) {
     </td>
   </tr>`).join('\n');
 
+  const num = String(sectionNum).padStart(2, '0');
   return `
 <section>
-  <div class="section-hed">
-    <div class="section-eyebrow">Next Steps</div>
-    <h2>行动建议</h2>
+  <div class="section-head">
+    <p class="section-num">${num} · Next Steps</p>
+    <h2 class="section-title">行动建议</h2>
     <div class="rule"></div>
   </div>
   <table class="actions-table"><tbody>${rows}</tbody></table>
 </section>`;
 }
 
-function buildSummary(meta, summaryPoints) {
+function buildSummary(meta, summaryPoints, sectionNum) {
+  const num = String(sectionNum).padStart(2, '0');
   const points = (summaryPoints || []).slice(0, 5).map(p =>
     `<li>${escapeHtml(p)}</li>`
   ).join('\n');
 
   return `
 <section class="summary-section">
+  <div class="section-head">
+    <p class="section-num">${num} · Summary Card</p>
+    <h2 class="section-title">结论摘要</h2>
+    <div class="rule"></div>
+  </div>
   <div class="summary-card-fallback" id="summary-fallback">
+    <p class="sc-eyebrow">Report Summary</p>
     <h2>${escapeHtml(meta?.title || 'Report')}</h2>
     <p class="summary-date">${escapeHtml(meta?.date || '')}</p>
     <ul>${points}</ul>
+    <div class="sc-foot"><span>Editorial Report</span><span>${escapeHtml(meta?.date || '')}</span></div>
   </div>
-  <button id="btn-save-summary" class="btn-save">📋 打印 / 保存为 PDF</button>
 </section>`;
 }
 
@@ -265,11 +315,21 @@ function buildSummary(meta, summaryPoints) {
 function buildHtml(reportData, diagrams) {
   const { meta, conclusions, chapters, actions } = reportData;
 
+  // Section numbers: 01 = conclusions, 02..N = chapters, N+1 = actions, N+2 = summary
+  const hasActions = actions && actions.length > 0;
+  const chapterStart = 2;
+  const actionsNum = chapterStart + chapters.length;
+  const summaryNum = actionsNum + (hasActions ? 1 : 0);
+
   const coverSection = buildCover(meta);
   const conclusionsSection = buildConclusions(conclusions, diagrams.get('overview'));
-  const chaptersSections = chapters.map((ch, i) => buildChapter(ch, i, diagrams)).join('\n');
-  const actionsSection = actions?.length ? buildActions(actions) : '';
-  const summarySection = buildSummary(meta, reportData.summary_points || conclusions.map(c => c.point));
+  const chaptersSections = chapters.map((ch, i) => buildChapter(ch, i, diagrams, chapters.length)).join('\n');
+  const actionsSection = hasActions ? buildActions(actions, actionsNum) : '';
+  const summarySection = buildSummary(
+    meta,
+    reportData.summary_points || conclusions.map(c => c.point),
+    summaryNum
+  );
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -278,57 +338,114 @@ function buildHtml(reportData, diagrams) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${escapeHtml(meta.title || 'Report')}</title>
 <style>
-/* ===== KAMI DESIGN SYSTEM (inline) ===== */
-/* NOTE: Must match KAMI_THEME constant above. */
+/* ===== EDITORIAL DESIGN SYSTEM (inline) ===== */
+/* NOTE: Must match EDITORIAL_THEME constant above. */
+\${FONT_FACE_CSS}
 :root {
   --parchment: #f5f4ed;
   --ivory: #faf9f5;
+  --warm-sand: #e8e6dc;
   --brand: #1B365D;
   --brand-light: #2D5A8A;
   --brand-tint: #EEF2F7;
+  --brand-tint-2: #E4ECF5;
+  --brand-tint-3: #D6E1EE;
   --near-black: #141413;
   --dark-warm: #3d3d3a;
   --olive: #504e49;
   --stone: #6b6a64;
   --border: #e8e6dc;
   --border-soft: #e5e3d8;
-  --warm-sand: #e8e6dc;
-  --serif: Charter, Georgia, Palatino, "Times New Roman", "TsangerJinKai02", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", serif;
+  --ring: #e0ddd0;
+  --serif: "LXGW WenKai", Charter, Georgia, Palatino, "Times New Roman", "TsangerJinKai02", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", serif;
   --sans: -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Helvetica, Arial, sans-serif;
   --mono: "JetBrains Mono", "SF Mono", "Fira Code", Consolas, Monaco, "TsangerJinKai02", monospace;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+html, body { background: var(--parchment); }
 body {
-  background: var(--parchment);
   color: var(--near-black);
   font-family: var(--serif);
   font-size: 16px;
   line-height: 1.55;
+  letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
-  max-width: 880px;
+  -moz-osx-font-smoothing: grayscale;
+  font-variant-numeric: tabular-nums;
+}
+html[lang="zh-CN"] body { letter-spacing: 0.35px; }
+html[lang="zh-CN"] .section-title,
+html[lang="zh-CN"] .lede,
+html[lang="zh-CN"] .cover h1 { letter-spacing: 0; }
+html[lang="en"] .section-title { letter-spacing: -0.3px; }
+html[lang="en"] .cover h1 { letter-spacing: -0.5px; }
+
+.page {
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 72px 48px 120px;
+  padding: 88px 64px 120px;
+  animation: page-fade-in 0.4s ease-out;
+}
+@media (max-width: 768px) {
+  .page { padding: 48px 20px 64px; }
 }
 
-/* ---- TYPOGRAPHY ---- */
-h1 { font-size: 36px; font-weight: 500; line-height: 1.15; margin: 0; letter-spacing: -0.01em; }
-h2 { font-size: 24px; font-weight: 500; line-height: 1.2; margin: 0; }
-h3 { font-size: 18px; font-weight: 500; line-height: 1.3; margin: 0 0 8px; color: var(--near-black); }
-h4 { font-size: 16px; font-weight: 500; line-height: 1.4; margin: 0; color: var(--dark-warm); }
-p  { margin: 8px 0; color: var(--dark-warm); line-height: 1.55; }
+/* ---- TYPE SCALE ---- */
+.cover h1 {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 64px;
+  line-height: 1.05;
+  color: var(--near-black);
+  margin: 0 0 16px;
+  text-wrap: balance;
+}
+.section-title {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 32px;
+  line-height: 1.2;
+  color: var(--near-black);
+  margin: 0;
+}
+.section-num {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--brand);
+  margin: 0 0 6px;
+}
+.lede {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--olive);
+  margin: 14px 0 0;
+}
+h3 { font-size: 18px; font-weight: 500; line-height: 1.3; color: var(--near-black); margin: 0; }
+h4 { font-size: 15px; font-weight: 500; line-height: 1.4; color: var(--olive); margin: 0; }
+p  { color: var(--dark-warm); line-height: 1.55; }
 strong { font-weight: 500; color: var(--near-black); }
-a { color: var(--brand); text-decoration: none; }
-a:hover { text-decoration: underline; }
+a { color: var(--brand); text-decoration: none; transition: color .15s; }
+a:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 code.ic {
   font-family: var(--mono);
   background: var(--brand-tint);
   color: var(--brand);
   padding: 1px 5px;
-  border-radius: 3px;
-  font-size: 0.9em;
+  border-radius: 2px;
+  font-size: 0.85em;
 }
 blockquote.bq {
   border-left: 2px solid var(--brand);
@@ -340,272 +457,384 @@ blockquote.bq {
 
 /* ---- COVER ---- */
 .cover {
-  padding: 60px 0 48px;
+  padding-bottom: 40px;
+  border-bottom: 1px solid var(--border-soft);
   margin-bottom: 56px;
-  border-bottom: 0.5px solid var(--border);
 }
-.cover-eyebrow {
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-family: var(--sans);
   font-size: 12px;
   font-weight: 500;
-  color: var(--stone);
-  letter-spacing: 1.5px;
+  letter-spacing: 1.2px;
   text-transform: uppercase;
-  margin-bottom: 28px;
+  color: var(--stone);
+  margin: 0 0 18px;
+}
+.eyebrow .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--brand); display: inline-block;
+}
+.cover .tagline {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 20px;
+  line-height: 1.4;
+  color: var(--olive);
+  margin: 0 0 24px;
+  max-width: 720px;
+}
+.cover-meta {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 18px;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--stone);
+  letter-spacing: 0;
 }
-.cover-eyebrow::before {
-  content: "";
-  display: inline-block;
-  width: 8px; height: 1.5px;
-  background: var(--brand);
-  flex-shrink: 0;
-}
-.cover-tags { margin-bottom: 28px; }
+.cover-meta b { color: var(--dark-warm); font-weight: 500; }
+.cover-meta .sep { color: var(--border); }
+.cover-tags { margin: 18px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .cover-tags .tag {
   display: inline-block;
   background: var(--brand-tint);
   color: var(--brand);
   font-family: var(--sans);
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 3px;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-  margin: 0 6px 6px 0;
-}
-.cover h1 {
-  font-size: 44px;
+  font-size: 12px;
   font-weight: 500;
-  line-height: 1.10;
-  margin: 0 0 20px;
-  text-wrap: balance;
-}
-.cover .summary {
-  font-size: 18px;
-  color: var(--olive);
-  max-width: 600px;
-  line-height: 1.5;
-  margin: 0 0 28px;
-}
-.cover .meta {
-  font-family: var(--sans);
-  font-size: 13px;
-  color: var(--stone);
-  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: 2px;
+  letter-spacing: 0.4px;
 }
 
-/* ---- SECTIONS ---- */
-section { margin: 56px 0; }
-.section-hed { margin-bottom: 24px; }
-.section-eyebrow {
-  font-family: var(--sans);
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--stone);
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  margin-bottom: 10px;
-}
-.section-hed h2 {
-  font-size: 26px;
-  font-weight: 500;
-  line-height: 1.2;
-  color: var(--near-black);
-}
-.section-hed .rule {
-  height: 0.5px;
-  background: var(--border);
+/* ---- SECTION OPENER ---- */
+section { margin-bottom: 64px; }
+.section-head { margin-bottom: 24px; }
+.section-head .rule {
+  height: 1px;
+  background: var(--border-soft);
   margin-top: 16px;
 }
 
 /* ---- CONCLUSIONS ---- */
-.conclusions-grid { counter-reset: conclusion; margin: 28px 0; }
+.conclusions-grid { counter-reset: conclusion; margin-top: 8px; }
 .conclusion-item {
   counter-increment: conclusion;
-  display: flex;
+  display: grid;
+  grid-template-columns: 56px 1fr;
   gap: 20px;
-  padding: 20px 0;
-  border-bottom: 0.5px solid var(--border-soft);
+  padding: 22px 0;
+  border-bottom: 1px solid var(--border-soft);
+  align-items: start;
 }
 .conclusion-item:last-child { border-bottom: none; }
 .conclusion-num {
   font-family: var(--serif);
-  font-size: 32px;
   font-weight: 500;
+  font-size: 28px;
   color: var(--brand);
   line-height: 1;
-  min-width: 36px;
-  flex-shrink: 0;
+  letter-spacing: 0;
+  padding-top: 2px;
 }
 .conclusion-num::before { content: "0" counter(conclusion); }
-.conclusion-body h3 { margin: 0 0 6px; font-size: 18px; }
+.conclusion-body h3 { margin: 0 0 4px; font-size: 18px; }
 .conclusion-body p  { margin: 0; font-size: 15px; color: var(--olive); line-height: 1.55; }
 
 /* ---- CHAPTER ---- */
 .chapter-lead {
-  font-size: 17px;
+  font-size: 16px;
   color: var(--dark-warm);
   line-height: 1.55;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   padding: 18px 22px;
   background: var(--ivory);
   border-radius: 6px;
 }
+.chapter-lead .thesis-label {
+  display: block;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--brand);
+  margin-bottom: 6px;
+}
 .chapter-lead strong { color: var(--brand); }
-.chapter-content { margin: 20px 0; }
+.chapter-content { margin: 8px 0 0; }
 .chapter-content h3 { margin: 28px 0 10px; font-size: 18px; }
-.chapter-content h4 { margin: 20px 0 8px; font-size: 15px; color: var(--olive); }
-.chapter-content ul, .chapter-content ol { margin: 8px 0; padding-left: 20px; }
+.chapter-content h4 { margin: 20px 0 8px; font-size: 15px; }
+.chapter-content ul, .chapter-content ol { margin: 8px 0; padding-left: 22px; }
 .chapter-content li { margin: 4px 0; color: var(--dark-warm); line-height: 1.55; }
 .chapter-content li strong { color: var(--near-black); }
 
 /* ---- DIAGRAMS ---- */
 .diagram-wrap {
   margin: 28px 0;
-  padding: 24px;
+  padding: 28px 24px;
   background: var(--ivory);
-  border-radius: 6px;
+  border-radius: 8px;
   overflow-x: auto;
 }
 .diagram-wrap svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+.diagram-caption {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--stone);
+  text-align: center;
+  margin: 12px 0 0;
+  letter-spacing: 0.4px;
+}
 .diagram-error {
   padding: 14px 18px;
   background: #f0e0d8;
-  border-radius: 4px;
+  border-radius: 6px;
   color: #8b4513;
   font-family: var(--sans);
   font-size: 13px;
   margin: 16px 0;
 }
 
-/* ---- TABLES ---- */
+/* ---- DATA TABLES ---- */
 table.data-table {
-  width: 100%; border-collapse: collapse;
-  font-size: 14px; margin: 20px 0;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin: 20px 0;
+  font-variant-numeric: tabular-nums;
 }
 table.data-table th {
-  text-align: left; font-weight: 500; color: var(--stone);
-  font-family: var(--sans); font-size: 11px; text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 8px 10px; border-bottom: 0.5px solid var(--border);
+  text-align: left;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--stone);
+  padding: 12px 16px 12px 0;
+  border-bottom: 1px solid var(--border);
 }
 table.data-table td {
-  padding: 8px 10px; border-bottom: 0.3px solid var(--border-soft);
-  vertical-align: top; color: var(--dark-warm);
+  padding: 12px 16px 12px 0;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: top;
+  color: var(--dark-warm);
 }
+table.data-table tr:last-child td { border-bottom: none; }
+table.data-table th:last-child,
+table.data-table td:last-child { padding-right: 0; }
 
 /* ---- ACTIONS ---- */
-.actions-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+.actions-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
 .actions-table td {
-  padding: 14px 0;
-  border-bottom: 0.5px solid var(--border-soft);
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border-soft);
   vertical-align: top;
 }
 .actions-table tr:last-child td { border-bottom: none; }
 .actions-table .act-priority {
-  width: 70px;
+  width: 110px;
   font-family: var(--sans);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: 0.4px;
   text-transform: uppercase;
-  padding-right: 16px;
+  padding-right: 24px;
   white-space: nowrap;
+  padding-top: 22px;
 }
-.act-priority.high { color: var(--brand); }
+.act-priority.high   { color: var(--brand); }
 .act-priority.medium { color: var(--olive); }
-.act-priority.low { color: var(--stone); }
-.actions-table .act-body strong { display: block; margin-bottom: 2px; font-size: 15px; }
-.actions-table .act-body p { margin: 2px 0 0; font-size: 14px; color: var(--olive); }
+.act-priority.low    { color: var(--stone); }
+.actions-table .act-body strong { display: block; margin-bottom: 4px; font-size: 16px; color: var(--near-black); font-weight: 500; }
+.actions-table .act-body p { margin: 0; font-size: 14px; color: var(--olive); line-height: 1.5; }
+
+/* ---- METRICS ROW ---- */
+.metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  padding: 20px 24px;
+  background: var(--ivory);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 24px 0;
+}
+.metric { display: flex; flex-direction: column; gap: 4px; }
+.metric-value {
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--brand);
+  line-height: 1;
+  letter-spacing: 0;
+}
+.metric-label {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--olive);
+  letter-spacing: 0.4px;
+}
 
 /* ---- SUMMARY CARD ---- */
 .summary-section {
-  margin: 72px 0 40px;
+  margin: 56px 0 32px;
   padding-top: 48px;
-  border-top: 0.5px solid var(--border);
+  border-top: 1px solid var(--border-soft);
 }
 .summary-card-fallback {
   background: var(--ivory);
-  border-radius: 8px;
-  padding: 48px 44px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 56px 48px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.04);
-  text-align: center;
+}
+.summary-card-fallback .sc-eyebrow {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--stone);
+  margin-bottom: 20px;
 }
 .summary-card-fallback h2 {
-  font-size: 28px; font-weight: 500; margin-bottom: 8px;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 32px;
+  line-height: 1.2;
+  color: var(--near-black);
+  margin: 0 0 8px;
+  letter-spacing: -0.3px;
 }
 .summary-card-fallback .summary-date {
   font-family: var(--sans);
-  font-size: 13px; color: var(--stone);
+  font-size: 13px;
+  color: var(--stone);
   margin-bottom: 32px;
 }
 .summary-card-fallback ul {
-  list-style: none; padding: 0; text-align: left;
-  max-width: 560px; margin: 0 auto;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--border-soft);
 }
 .summary-card-fallback li {
   position: relative;
-  padding: 12px 0 12px 24px;
-  border-bottom: 0.3px solid var(--border-soft);
-  font-size: 17px;
+  padding: 16px 0 16px 28px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 16px;
   color: var(--dark-warm);
-  line-height: 1.45;
+  line-height: 1.5;
 }
 .summary-card-fallback li:last-child { border-bottom: none; }
 .summary-card-fallback li::before {
   content: "";
   position: absolute;
-  left: 0; top: 22px;
-  width: 8px; height: 1.5px;
+  left: 0; top: 26px;
+  width: 12px; height: 1.5px;
   background: var(--brand);
 }
-.btn-save {
-  display: inline-block;
+.summary-card-fallback .sc-foot {
   margin-top: 24px;
-  background: var(--brand);
-  color: var(--ivory);
+  padding-top: 20px;
+  border-top: 1px solid var(--border-soft);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   font-family: var(--sans);
-  font-size: 14px;
-  font-weight: 500;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  box-shadow: 0 0 0 1px var(--brand);
-  transition: all 0.15s;
+  font-size: 12px;
+  color: var(--stone);
+  letter-spacing: 0.4px;
 }
-.btn-save:hover {
-  background: var(--brand-light);
-  transform: translateY(-1px);
+
+/* ---- DASH LIST ---- */
+ul.dash {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+ul.dash li {
+  position: relative;
+  padding-left: 18px;
+  margin: 4px 0;
+  color: var(--dark-warm);
+  line-height: 1.55;
+}
+ul.dash li::before {
+  content: "\u2013";
+  position: absolute;
+  left: 0;
+  color: var(--brand);
+}
+
+/* ---- QUOTE CALLOUT ---- */
+.callout {
+  margin: 24px 0;
+  padding: 20px 24px;
+  background: var(--ivory);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--brand);
+  border-radius: 6px;
+  font-size: 15px;
+  color: var(--dark-warm);
+  line-height: 1.6;
+}
+.callout .label {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--brand);
+  margin-bottom: 6px;
+  display: block;
 }
 
 /* ---- RESPONSIVE ---- */
-@media (max-width: 640px) {
-  body { padding: 40px 20px 80px; font-size: 15px; }
-  .cover { padding: 32px 0 36px; margin-bottom: 36px; }
-  .cover h1 { font-size: 32px; }
-  .section-hed h2 { font-size: 22px; }
-  .conclusion-item { flex-direction: column; gap: 8px; }
+@media (max-width: 768px) {
+  .cover h1 { font-size: 40px; }
+  .section-title { font-size: 24px; }
+  .cover .tagline { font-size: 17px; }
+  section { margin-bottom: 48px; }
+  .summary-card-fallback { padding: 32px 24px; }
+  .summary-card-fallback h2 { font-size: 24px; }
+  .conclusion-item { grid-template-columns: 40px 1fr; gap: 12px; }
+  .conclusion-num { font-size: 22px; }
+  .actions-table .act-priority { width: 80px; padding-right: 16px; }
+  .metrics { gap: 20px; padding: 16px; }
 }
+@media (max-width: 480px) {
+  .page { padding: 32px 16px 48px; }
+  .cover h1 { font-size: 32px; }
+  .cover-meta { gap: 12px; }
+}
+
+/* ---- PRINT ---- */
+@page { size: A4; margin: 14mm 16mm; background: var(--parchment); }
+@media print {
+  body, .page { background: var(--parchment); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { padding: 0 !important; max-width: 100% !important; }
+  section { page-break-inside: auto; }
+  .cover, .section-head, .chapter-lead, .diagram-wrap, .conclusion-item, .actions-table tr, .summary-card-fallback { break-inside: avoid; page-break-inside: avoid; }
+  .cover h1 { font-size: 44px; }
+  .section-title { font-size: 24px; }
+}
+
 </style>
 </head>
 <body>
-
+<div class="page">
 ${coverSection}
 ${conclusionsSection}
 ${chaptersSections}
 ${actionsSection}
 ${summarySection}
-
-<script>
-document.getElementById('btn-save-summary')?.addEventListener('click', function() {
-  window.print();
-});
-</script>
-
+</div>
 </body>
 </html>`;
 }
@@ -613,7 +842,12 @@ document.getElementById('btn-save-summary')?.addEventListener('click', function(
 // ===== Summary Card Generation (takumi with CJK font support) =====
 async function findCJKFont() {
   const { existsSync, readFileSync } = await import('node:fs');
-  // Search system CJK font paths (macOS, Linux, Windows)
+  // 1) Prefer bundled LXGW WenKai (ships in fonts/, SIL OFL)
+  const bundled = await loadBundledFont();
+  if (bundled) {
+    return { name: bundled.name, data: bundled.data, bundled: true };
+  }
+  // 2) Fall back to system CJK fonts
   const candidates = [
     { path: '/System/Library/Fonts/Supplemental/Songti.ttc', name: 'Songti SC' },
     { path: '/System/Library/Fonts/Supplemental/Arial Unicode.ttf', name: 'Arial Unicode MS' },
@@ -643,41 +877,105 @@ try {
     const htmlHelper = await import('takumi-js/helpers/html');
 
     const needsCJK = hasCJK(JSON.stringify(data));
+    // Register fonts at weight 400 only. We avoid loadDefaultFonts because
+    // takumi otherwise falls back to system bold variants, which make the
+    // LXGW WenKai kaiti title look heavy/blurry.
     const fonts = [
-      { name: 'Charter', data: cjkFont.data, weight: 400 },
-      { name: 'Charter', data: cjkFont.data, weight: 700 },
+      { name: cjkFont.name, data: cjkFont.data, weight: 400 },
     ];
     if (needsCJK) {
       fonts.push(
-        { name: cjkFont.name, data: cjkFont.data, weight: 400 },
-        { name: cjkFont.name, data: cjkFont.data, weight: 700 },
-        { name: 'Songti SC', data: cjkFont.data, weight: 400 },
-        { name: 'Songti SC', data: cjkFont.data, weight: 700 },
+        { name: 'LXGW WenKai', data: cjkFont.data, weight: 400 },
       );
     }
 
     const renderer = new core.Renderer({
       fonts,
-      loadDefaultFonts: true,
+      loadDefaultFonts: false,
     });
 
     const titleFont = needsCJK
-      ? `font-family:${cjkFont.name},'Songti SC',serif`
-      : `font-family:Charter,Georgia,serif`;
+      ? `${cjkFont.name},'Songti SC',serif`
+      : `Charter,Georgia,serif`;
     const bodyFont = needsCJK
-      ? `font-family:${cjkFont.name},'PingFang SC',-apple-system,sans-serif`
-      : `font-family:Charter,Georgia,serif`;
+      ? `${cjkFont.name},'PingFang SC',-apple-system,sans-serif`
+      : `Charter,Georgia,serif`;
 
-    const pointsHtml = (data.summary_points || data.conclusions.map(c => c.point))
-      .slice(0, 5)
-      .map((p, i) => `<li style="${bodyFont};font-size:22px;color:#3d3d3a;margin-bottom:14px;line-height:1.5;padding-left:10px;border-left:3px solid #1B365D;">${escapeHtml(p)}</li>`)
+    const points = (data.summary_points || data.conclusions.map(c => c.point)).slice(0, 4);
+    const pointsHtml = points
+      .map((p, i) => `<div style="display:flex;align-items:flex-start;gap:12px;padding:6px 0;"><span style="width:18px;height:1.5px;background:#1B365D;flex-shrink:0;margin-top:14px;"></span><span style="${bodyFont};font-size:18px;color:#3d3d3a;line-height:1.5;letter-spacing:0;">${escapeHtml(p)}</span></div>`)
       .join('');
 
-    const cardHtml = `<div style="width:1200px;height:630px;background:#f5f4ed;display:flex;flex-direction:column;justify-content:center;padding:80px 100px;box-sizing:border-box;">
-      <div style="font-size:14px;color:#6b6a64;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;font-family:-apple-system,sans-serif;">Report Summary</div>
-      <h1 style="${titleFont};font-size:42px;font-weight:700;color:#141413;margin:0 0 40px 0;line-height:1.2;">${escapeHtml(data.meta?.title || 'Report')}</h1>
-      <ul style="list-style:none;padding:0;margin:0;">${pointsHtml}</ul>
-      <div style="margin-top:40px;font-size:14px;color:#6b6a64;font-family:-apple-system,sans-serif;">${escapeHtml(data.meta?.date || '')}</div>
+    // Metrics
+    const totalChapters = data.chapters?.length || 0;
+    const totalConclusions = data.conclusions?.length || 0;
+    const totalDiagrams = (data.overview_diagram ? 1 : 0) + (data.chapters || []).reduce((acc, c) => acc + (c.diagrams?.length || 0), 0);
+    const totalActions = data.actions?.length || 0;
+    const metrics = [
+      { v: String(totalChapters), l: 'Chapters' },
+      { v: String(totalConclusions), l: 'Conclusions' },
+      { v: String(totalDiagrams), l: 'Diagrams' },
+      { v: String(totalActions), l: 'Actions' },
+    ];
+    const metricsHtml = metrics.map(m => `
+      <div style="display:flex;flex-direction:column;gap:6px;padding:16px 20px;background:#faf9f5;border:1px solid #e8e6dc;border-radius:8px;flex:1;min-width:0;">
+        <div style="${titleFont};font-size:30px;font-weight:400;color:#1B365D;line-height:1;letter-spacing:0;">${m.v}</div>
+        <div style="font-family:-apple-system,sans-serif;font-size:11px;color:#6b6a64;letter-spacing:1.2px;text-transform:uppercase;font-weight:500;">${escapeHtml(m.l)}</div>
+      </div>
+    `).join('');
+
+    // Tagline truncation
+    const tagline = (data.meta?.summary || '').trim();
+    const dateStr = escapeHtml(data.meta?.date || '');
+    const authorStr = escapeHtml(data.meta?.author || '');
+    const sourceStr = escapeHtml(data.meta?.source || '');
+    const metaLine = [
+      dateStr && dateStr,
+      authorStr && `by ${authorStr}`,
+      sourceStr && sourceStr,
+    ].filter(Boolean).join(' \u00b7 ');
+
+    // Info card: 1200x630, grid layout
+    // - Row 1 (eyebrow): 36px
+    // - Row 2 (hero title + metrics): 200px
+    // - Row 3 (tagline): 36px
+    // - Row 4 (insights): 220px
+    // - Row 5 (footer): 32px
+    // Total: ~620px (with 5px padding buffer)
+    const cardHtml = `<div style="width:1200px;height:630px;background:#f5f4ed;display:flex;flex-direction:column;padding:48px 60px;box-sizing:border-box;font-family:${titleFont};">
+      <!-- Top eyebrow row -->
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e5e3d8;padding-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:10px;font-family:-apple-system,sans-serif;font-size:12px;color:#6b6a64;letter-spacing:1.5px;text-transform:uppercase;font-weight:500;">
+          <span style="width:6px;height:6px;background:#1B365D;border-radius:50%;display:inline-block;"></span>
+          <span>Report Summary</span>
+        </div>
+        <div style="font-family:-apple-system,sans-serif;font-size:12px;color:#6b6a64;letter-spacing:0.4px;">${metaLine}</div>
+      </div>
+
+      <!-- Hero row: title on left, metrics on right -->
+      <div style="display:flex;gap:40px;margin-top:22px;align-items:flex-start;">
+        <div style="flex:1.5;min-width:0;padding-right:8px;">
+          <h1 style="font-size:42px;font-weight:400;color:#141413;line-height:1.15;margin:0 0 14px 0;letter-spacing:-0.2px;">${escapeHtml(data.meta?.title || 'Report')}</h1>
+          <p style="font-size:15px;color:#504e49;line-height:1.55;margin:0;font-family:${bodyFont};letter-spacing:0;max-width:560px;">${escapeHtml(tagline)}</p>
+        </div>
+        <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0;align-content:start;">
+          ${metricsHtml}
+        </div>
+      </div>
+
+      <!-- Insights (4 bullets max) -->
+      <div style="margin-top:auto;padding-top:24px;border-top:1px solid #e5e3d8;">
+        <div style="font-family:-apple-system,sans-serif;font-size:11px;color:#1B365D;letter-spacing:1.2px;text-transform:uppercase;font-weight:500;margin-bottom:10px;">Key Insights</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 32px;">
+          ${pointsHtml}
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding-top:12px;border-top:1px solid #e5e3d8;font-family:-apple-system,sans-serif;font-size:11px;color:#6b6a64;letter-spacing:0.4px;">
+        <span>Editorial Report</span>
+        <span>${dateStr}</span>
+      </div>
     </div>`;
 
     const parsed = htmlHelper.fromHtml(cardHtml);
@@ -689,9 +987,26 @@ try {
   console.warn('takumi summary card failed (non-fatal):', err.message);
 }
 
+// ===== Subset bundled font for HTML =====
+let htmlFontBase64 = null;
+if (data && hasCJK(JSON.stringify(data))) {
+  const bundled = await loadBundledFont();
+  if (bundled) {
+    const sub = await subsetBundledFont(bundled, JSON.stringify(data));
+    if (sub) {
+      htmlFontBase64 = sub.data.toString('base64');
+      console.log(`  HTML font subset: ${sub.name} (${sub.sizeKB.toFixed(0)} KB, inlined as base64)`);
+    }
+  }
+}
+
 // Build final HTML
 console.log('Assembling HTML report...');
+const fontFaceCSS = htmlFontBase64
+  ? "@font-face {\n  font-family: 'LXGW WenKai';\n  font-style: normal;\n  font-weight: 400;\n  font-display: swap;\n  src: url(data:font/woff2;base64," + htmlFontBase64 + ") format('woff2');\n}"
+  : '';
 let html = buildHtml(data, diagramResults);
+html = html.replace('${FONT_FACE_CSS}', fontFaceCSS);
 if (summaryPngBase64) {
   // Inject PNG image into summary section, hide fallback
   html = html.replace(
