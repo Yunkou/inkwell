@@ -2,237 +2,222 @@
 
 [![skills.sh](https://skills.sh/b/Yunkou/inkwell)](https://skills.sh/Yunkou/inkwell)
 
-> Editorial report generator for AI agents. Turns messy conversation threads into polished, readable HTML reports — the kind you'd actually want to share with your team.
+> 把 AI 对话变成精编 HTML 报告。金字塔结构、图表优先、编辑级排版。生成的单文件 HTML 可以离线打开、直接分享。
 
-**Inkwell** is a Claude Code skill that transforms AI research sessions, multi-turn conversations, and code analysis into structured HTML reports. Pyramid Principle methodology, beautiful-mermaid diagrams, a summary card rendered by takumi, and an editorial design system inspired by Kami. The output is a single self-contained HTML file — no server, no build step, no CDN dependencies. Open it anywhere.
+**Inkwell** 是一个 AI Agent 技能，把多轮对话、代码调研、研究过程转化为结构化 HTML 报告。方法论是金字塔原理，图表用 beautiful-mermaid 渲染，总结图用 takumi 生成，排版继承 Kami 编辑级设计系统。输出是一个自包含的 HTML 文件——无服务端、无构建、无 CDN 依赖。
 
-## Why Inkwell?
+[English README](README.en.md)
 
-AI chat output is a wall of text. Markdown dumps are long, flat, and visually exhausting. Humans process diagrams faster than paragraphs.
+## 为什么需要 Inkwell
 
-Inkwell turns raw conversation into a structured report with:
+AI 聊天框输出是文字墙。Markdown 又长又平，阅读体验差。人脑处理图表比处理段落快得多。
 
-- **Pyramid Principle structure** — conclusion first, then supporting evidence
-- **Diagrams everywhere** — at least one mermaid diagram per chapter (flowcharts, sequence diagrams, state machines, XY charts)
-- **Editorial typography** — serif-led hierarchy, single ink-blue accent, warm-parchment canvas
-- **Self-contained HTML** — zero external dependencies, works offline, 80–150 KB
-- **Summary card** — a takumi-rendered PNG info card at the bottom with the key takeaways
+Inkwell 把原始对话变成：
 
-## Six Use Cases
+- **金字塔结构** — 结论先行，以上统下，归类分组，逻辑递进
+- **图表优先** — 每章至少一张 mermaid 图（流程图、时序图、状态图、XY 图表）
+- **编辑级排版** — 衬线为主、单色墨蓝强调、羊皮纸底色、霞鹜文楷中文
+- **自包含 HTML** — 零外部依赖，离线可用，80–150 KB
+- **总结信息卡** — 报告底部 takumi 渲染的 1200×630 PNG，四区布局
 
-### 1. Research Debrief
+## 六个应用场景
 
-You just spent 90 minutes with an AI agent researching a topic. Instead of scrolling through 200 messages, generate a report with the key findings, supporting evidence, and a summary diagram. Share it with your team as a standalone HTML file.
+### 1. 调研复盘
 
-> *"What did we learn about the competitive landscape for vector databases?"* → Structured report with comparison charts.
+跟 AI 花了 90 分钟调研一个话题，不想翻 200 条消息。一键生成报告：核心结论、支撑论据、总览图。导出 HTML 发给团队。
 
-### 2. Codebase Architecture Review
+> *"向量数据库竞争格局调研"* → 带对比图表的精编报告。
 
-After an AI agent explores a new codebase — tracing data flows, mapping module boundaries, identifying patterns — the output is a wall of bullet points. Inkwell turns that into a visual architecture document with mermaid diagrams showing relationships, call graphs, and dependency maps.
+### 2. 代码架构审查
 
-> *"Explore this monorepo and explain how the auth system works."* → Architecture report with sequence diagrams.
+让 AI 探索新代码库——追踪数据流、梳理模块边界、识别设计模式。输出不再是散乱的要点列表，而是带 mermaid 架构图的可视化文档。
 
-### 3. Weekly Investment / Market Briefing
+> *"梳理这个 monorepo 的认证系统"* → 带时序图的架构报告。
 
-You run a weekly research workflow that pulls market data, financials, and news via MCP tools. The raw output is 700+ lines of markdown. Inkwell structures it into a professional briefing: cover with key metrics, chapters per sector, overview diagrams, and a takumi summary card you can screenshot for social media.
+### 3. 投资周报 / 市场简报
 
-> *"Generate the weekly AI supply chain investment report."* → 5-chapter editorial report with portfolio allocation charts.
+通过 MCP 工具拉取行情数据、财务指标、新闻舆情，原始输出 700+ 行 markdown。Inkwell 将其重组为专业简报：封面关键指标、分板块章节、总览图、可截图分享的总结卡。
 
-### 4. Incident Post-Mortem
+> *"生成本周 AI 产业链投资报告"* → 5 章编辑级报告，含仓位配置图。
 
-After debugging a production incident with an AI agent, the timeline, root cause, fixes, and prevention steps are scattered across the conversation. Inkwell produces a clean post-mortem: timeline diagram, root cause analysis, action items with priority labels, ready to share with stakeholders.
+### 4. 事故复盘
 
-> *"What caused the outage and what did we do?"* → Post-mortem with timeline sequence diagram.
+跟 AI 排查完生产故障，时间线、根因、修复方案、预防措施散落在对话各处。Inkwell 生成清晰的事故报告：时间线时序图、根因分析、分优先级的行动项。
 
-### 5. Technical Decision Record
+> *"这次宕机的原因和处理过程"* → 带时间线的事故复盘报告。
 
-When you debate architectural choices with an AI agent — comparing frameworks, evaluating trade-offs, weighing pros and cons — the conversation is full of insights buried in paragraphs. Inkwell extracts the key decision factors into a structured document with comparison tables, decision-tree diagrams, and clear recommendations.
+### 5. 技术决策记录
 
-> *"Should we migrate from PostgreSQL to ClickHouse for our analytics pipeline?"* → Decision record with comparison matrix and flowchart.
+跟 AI 争论架构选型——对比框架、权衡利弊——洞察全埋在段落里。Inkwell 提取关键决策因素，生成对比表、决策树图、明确建议。
 
-### 6. Learning Pathway / Study Notes
+> *"要不要从 PostgreSQL 迁到 ClickHouse？"* → 带决策流程图的对比分析。
 
-After a deep-dive learning session where an AI agent teaches you a new domain, the Q&A is dense and unstructured. Inkwell turns it into well-organized study notes: concept maps, topic breakdowns per chapter, key takeaways with examples, and a summary card for quick review.
+### 6. 学习笔记
 
-> *"Teach me how B+ trees work and why databases use them."* → Structured learning notes with tree-structure diagrams.
+让 AI 教你一个新领域，问答密集且无结构。Inkwell 整理成有条理的学习笔记：概念图、分章节知识点、核心要点及示例、快速回顾总结卡。
 
-## Quick Start
+> *"给我讲 B+ 树原理"* → 带树结构图的结构化笔记。
 
-### Prerequisites
+## 快速开始
+
+### 环境要求
 
 - **Node.js** ≥ 18
-- An AI agent that supports skills (Claude Code, Codex, Cursor, etc.)
+- 支持 Skills 的 AI Agent（Claude Code、Codex、Cursor 等）
 
-### Installation
+### 安装
 
 ```bash
-# Install via skills CLI (recommended)
+# 推荐：通过 skills CLI 安装
 npx skills add Yunkou/inkwell
 
-# Or clone directly
+# 或者直接 clone
 git clone https://github.com/Yunkou/inkwell.git
 cd inkwell && npm install
 ```
 
-### Usage
+### 使用
 
-Just ask your AI agent to generate a report:
-
-```
-Generate a report from our conversation about [topic].
-```
-
-The agent will:
-1. Analyze the conversation and structure it into JSON (Pyramid Principle)
-2. Render mermaid diagrams as inline SVG
-3. Generate a takumi summary card PNG
-4. Output a single self-contained `report.html`
-5. Open it in your browser
-
-Or invoke the skill directly:
+直接跟 AI Agent 说：
 
 ```
-/inkwell: generate a report from our conversation
+把我们的对话生成一份报告。
 ```
 
-## Agent Setup
+Agent 会自动：
+1. 分析对话内容，按金字塔原理结构化
+2. 渲染 mermaid 图表为内联 SVG
+3. 生成 takumi 总结图 PNG
+4. 输出单文件 `report.html`
+5. 在浏览器中打开
+
+或直接调用技能：
+
+```
+/inkwell: 把刚才的调研生成报告
+```
+
+## Agent 配置
 
 ### Claude Code
 
-The skill auto-registers when cloned to `~/.claude/skills/` or installed via `npx skills add Yunkou/inkwell`. Invoke with `/inkwell` or just say "generate a report."
-
-```bash
-npx skills add Yunkou/inkwell
-```
+通过 `npx skills add Yunkou/inkwell` 安装后自动注册。输入 `/inkwell` 或说「生成报告」即可触发。
 
 ### Codex (OpenAI)
-
-Place the skill in your Codex skills directory. Codex reads the SKILL.md frontmatter and workflows automatically.
 
 ```bash
 git clone https://github.com/Yunkou/inkwell.git ~/.codex/skills/inkwell
 cd ~/.codex/skills/inkwell && npm install
 ```
 
-In Codex, the skill triggers when you mention "generate report", "make a report", or "summarize this" in context of research output.
+在 Codex 中说 "generate report"、"生成报告" 即触发。
 
 ### Cursor
-
-Cursor supports skills via its `.cursor/skills/` directory. The SKILL.md format is compatible.
-
-```bash
-git clone https://github.com/Yunkou/inkwell.git .cursor/skills/inkwell
-cd .cursor/skills/inkwell && npm install
-```
-
-In Cursor, use `@inkwell` to invoke the skill, or describe the report you want in the chat.
-
-### GitHub Copilot
-
-Copilot supports skills through its agentic chat features. Install via the skills CLI:
 
 ```bash
 npx skills add Yunkou/inkwell
 ```
 
-The skill will be available in Copilot's agent mode. Ask it to "generate a report" and it will invoke Inkwell.
+在 Cursor 中使用 `@inkwell` 调用技能。
 
-### Windsurf
+### GitHub Copilot / Windsurf / Gemini CLI / Trae
+
+全部通过 skills CLI 安装：
 
 ```bash
-git clone https://github.com/Yunkou/inkwell.git ~/.windsurf/skills/inkwell
-cd ~/.windsurf/skills/inkwell && npm install
+npx skills add Yunkou/inkwell
 ```
 
-### CLI-only (no agent)
+### 纯 CLI（无 Agent）
 
-Inkwell can be used directly as a CLI tool without any AI agent. Pass a JSON file to the generator:
+Inkwell 可以脱离 AI Agent 直接使用。传入 JSON 文件即可：
 
 ```bash
 node scripts/generate-report.mjs input.json report.html
 open report.html
 ```
 
-The JSON schema is documented in [SKILL.md](SKILL.md).
+JSON 格式见 [SKILL.md](SKILL.md)。
 
-## How It Works
+## 工作原理
 
 ```
-Conversation Context
+对话上下文
       │
       ▼
 ┌─────────────────────┐
-│  AI Structuring      │  AI agent analyzes conversation
-│  (in-agent prompt)   │  Output: structured JSON (Pyramid Principle)
+│  AI 结构化            │  Agent 分析对话内容
+│  (对话中完成)          │  输出：金字塔结构 JSON
 └────────┬────────────┘
          │  JSON
          ▼
 ┌─────────────────────┐
-│  Node.js Generator   │  renderMermaidSVG() → inline SVG
-│  generate-report.mjs │  takumi Renderer + CJK font → summary PNG
-│                      │  Kami editorial CSS (inline)
+│  Node.js 生成器       │  renderMermaidSVG() → 内联 SVG
+│  generate-report.mjs │  takumi + 中文字体 → 总结图 PNG
+│                      │  编辑级 CSS 全部内联
 └────────┬────────────┘
-         │  report.html (self-contained)
+         │  report.html（自包含）
          ▼
 ┌─────────────────────┐
-│  Browser             │  Zero deps. Works offline.
-│                      │  80–150 KB. Shareable.
+│  浏览器               │  零依赖，离线可用
+│                      │  80–150 KB，直接分享
 └─────────────────────┘
 ```
 
-## Report Structure
+## 报告结构
 
-| Section | Content | Diagram |
-|---------|---------|---------|
-| **Cover** | Title, tags, summary, date, author | — |
-| **Key Findings** | 3–5 numbered conclusions | 1 overview diagram |
-| **Chapters** | Thesis card + body + diagrams each | ≥1 per chapter |
-| **Actions** | Priority-ordered table (P0/P1/P2) | — |
-| **Summary Card** | takumi PNG info card (1200×630) | Embedded as base64 |
+| 章节 | 内容 | 图表 |
+|------|------|------|
+| **封面** | 标题、标签、摘要、日期、作者 | — |
+| **核心结论** | 3–5 条大号编号结论 | 1 张总览图 |
+| **分章节** | Thesis 卡片 + 正文 + 图表 | 每章 ≥1 张 |
+| **行动建议** | 优先级表格（P0/P1/P2） | — |
+| **总结信息卡** | takumi PNG（1200×630）| base64 内嵌 |
 
-Content that's too brief auto-collapses into flexible mode — fewer chapters, merged sections.
+内容过短时自动切换灵活模式——合并章节、精简结构。
 
-## Design System
+## 设计系统
 
-Inkwell uses a refined editorial design language:
+Inkwell 使用编辑级设计语言：
 
-- **Palette**: warm parchment (`#f5f4ed`), single ink-blue accent (`#1B365D`), warm-toned grays
-- **Typography**: LXGW WenKai (kaiti) for CJK, Charter/Georgia for English, serif-led hierarchy at 400/500 weight only
-- **Spacing**: 1080px max-width, 88px/64px editorial padding
-- **Components**: numbered section openers, Thesis boxes, 4-zone summary info cards
-- **Anti-patterns banned**: side-stripe borders, gradient text, glassmorphism, AI-default cream backgrounds, cool grays
+- **配色**：羊皮纸底（`#f5f4ed`），单色墨蓝强调（`#1B365D`），暖调灰
+- **字体**：霞鹜文楷（中文楷体），Charter/Georgia（英文衬线），仅用 400/500 字重
+- **排版**：1080px 最大宽度，88px/64px 编辑级页边距
+- **组件**：编号章节头、Thesis 盒、四区总结信息卡
+- **禁止项**：左侧彩色竖线、渐变文字、毛玻璃、AI 默认奶油底色、冷调灰
 
-Full design tokens and rules: [references/design-tokens.md](references/design-tokens.md)
+完整设计规范：[references/design-tokens.md](references/design-tokens.md)
 
-## Tech Stack
+## 技术栈
 
-| Library | Role |
-|---------|------|
-| [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) | Mermaid → SVG rendering |
-| [takumi-js](https://github.com/kane50613/takumi) | Summary card PNG generation |
-| `subset-font` | Font subsetting (LXGW WenKai → 100–200 KB inlined) |
-| LXGW WenKai | Bundled CJK kaiti font (SIL OFL) |
+| 库 | 作用 |
+|----|------|
+| [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) | Mermaid → SVG 渲染 |
+| [takumi-js](https://github.com/kane50613/takumi) | 总结卡 PNG 生成 |
+| `subset-font` | 字体子集化（霞鹜文楷 → 100–200 KB 内联） |
+| 霞鹜文楷 | 内置中文楷体（SIL OFL 开源） |
 
-## File Structure
+## 文件结构
 
 ```
 inkwell/
-├── SKILL.md                        # Agent entry point
-├── README.md                       # You are here
-├── package.json                    # Node dependencies
+├── SKILL.md                        # Agent 入口
+├── README.md                       # 中文说明（本文件）
+├── README.en.md                    # English README
+├── package.json                    # Node 依赖
 ├── fonts/
-│   ├── LXGWWenKai-Regular.woff2    # Bundled CJK font (SIL OFL)
+│   ├── LXGWWenKai-Regular.woff2    # 内置中文字体（SIL OFL）
 │   └── README.md
 ├── references/
-│   └── design-tokens.md            # Editorial design system reference
+│   └── design-tokens.md            # 编辑级设计规范
 └── scripts/
-    └── generate-report.mjs         # JSON → HTML generator (self-contained)
+    └── generate-report.mjs         # JSON → HTML 生成器
 ```
 
-## Contributing
+## 参与贡献
 
-Issues and PRs welcome. The generator script is a single ESM file — easy to hack on.
+欢迎提 Issue 和 PR。生成器脚本是单文件 ESM，很容易修改。
 
-## License
+## 许可证
 
 MIT
