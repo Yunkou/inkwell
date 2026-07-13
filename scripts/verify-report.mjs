@@ -121,6 +121,7 @@ const anchors = [
   { name: 'actions table',      re: /<table class=["']actions-table["']/ },
   { name: 'data table',         re: /<table class=["']data-table["']/, optional: true },
   { name: 'diagram wrap',       re: /<div class=["']diagram-wrap["']/, optional: true },
+  { name: 'code block',          re: /<div class=["']code-block["']/, optional: true },
   { name: 'summary card',       re: /summary-card/, optional: true },
   { name: 'page root',          re: /<div class=["']page["']/ },
   { name: 'brand hairline rule',re: /<div class=["']rule["']/ },
@@ -256,6 +257,59 @@ if (xychartSvgs > 0 && xychartSeriesCount === 0) {
 }
 if (xychartSvgs === 0) {
   console.log(`  ${c('dim','no xychart blocks present')}`);
+}
+
+// ───────────────────────────────────────────────────────────────
+// 7. Code blocks & overview-diagram authoring hints
+// ───────────────────────────────────────────────────────────────
+section('7. Code blocks & overview diagram');
+const codeBlockCount = (html.match(/<div class=["']code-block["']/g) || []).length;
+console.log(`  ${c('dim',`${codeBlockCount} code-block card(s)`)}`);
+
+// Heuristic: if the report rendered at least one chapter but ZERO code-blocks
+// AND the chapter content contains literal triple-backtick fragments inside
+// the HTML (e.g. a stray ``` that did not get fenced), warn loudly.
+if (codeBlockCount === 0 && /```[a-zA-Z0-9+_-]*\n/.test(html)) {
+  console.log(`  ${c('yellow','⚠')}  literal triple-backtick fragments found in HTML but no .code-block cards rendered`);
+  console.log(`  ${c('dim','    Likely cause: renderMarkdown was bypassed (e.g. content was escaped earlier) and the fences were not stripped.')}`);
+  add('warn', 'Triple-backtick fragments present in HTML but no code-block cards — fences were not processed.');
+}
+
+// Overview-diagram complexity heuristic: an LR diagram with many nodes or
+// many back-edges tends to render cramped in beautiful-mermaid's ELK layered
+// layout. We can't read the original JSON here, but we CAN estimate from
+// the rendered SVG (number of <g class="node"> and <polyline class="edge">).
+function countOverviewComplexity(html) {
+  const overviewIdx = html.indexOf('核心结论');
+  if (overviewIdx < 0) return { nodes: 0, edges: 0 };
+  // Find the first diagram-wrap AFTER the conclusions heading; that's the overview.
+  const wrapStart = html.indexOf('<div class="diagram-wrap"', overviewIdx);
+  if (wrapStart < 0) return { nodes: 0, edges: 0 };
+  const wrapEnd = html.indexOf('</div>', wrapStart);
+  const slice = html.slice(wrapStart, wrapEnd);
+  // Skip subsequent diagrams inside chapters (each <div class="diagram-wrap"> opens a new scope).
+  const firstWrapEnd = slice.indexOf('</div>');
+  const overviewSvg = slice.slice(0, firstWrapEnd < 0 ? slice.length : firstWrapEnd);
+  const nodes = (overviewSvg.match(/<g class="node"/g) || []).length;
+  const edges = (overviewSvg.match(/<polyline class="edge"/g) || []).length;
+  return { nodes, edges };
+}
+const overviewStats = countOverviewComplexity(html);
+if (overviewStats.nodes > 0) {
+  console.log(`  ${c('dim',`overview diagram: ${overviewStats.nodes} node(s), ${overviewStats.edges} edge(s)`)}`);
+  // 8 nodes / 8 edges with bidirectional traffic is the visual threshold
+  // where beautiful-mermaid's ELK layered layout starts to feel crowded in
+  // the overview (rendered at the very top of every report).
+  if (overviewStats.nodes > 7 || overviewStats.edges > 8) {
+    console.log(`  ${c('yellow','⚠')}  overview diagram is dense (${overviewStats.nodes} nodes / ${overviewStats.edges} edges)`);
+    console.log(`  ${c('dim','    Consider splitting into 2 chapter diagrams, or use subgraph groups. See SKILL.md → Overview diagram authoring tips.')}`);
+    add('warn', `Overview diagram is dense (${overviewStats.nodes} nodes / ${overviewStats.edges} edges) — may render cramped.`);
+    add('info', `see SKILL.md → 'Overview diagram authoring tips'`);
+  } else {
+    console.log(`  ${c('green','✓')} overview diagram complexity is within comfortable limits`);
+  }
+} else {
+  console.log(`  ${c('dim','no overview diagram to inspect')}`);
 }
 
 // ───────────────────────────────────────────────────────────────

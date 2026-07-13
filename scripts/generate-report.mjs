@@ -156,12 +156,37 @@ async function subsetBundledFont(bundled, text) {
 }
 
 
+function renderCodeBlock(lang, body) {
+  // Preserve indentation visually by escaping HTML and relying on <pre><code>'s
+  // default whitespace handling. The body is the raw text between the fences.
+  const languageLabel = lang
+    ? `<span class="cb-lang">${escapeHtml(lang)}</span>`
+    : '';
+  return `<div class="code-block">${languageLabel}<pre><code${lang ? ` class="lang-${escapeHtml(lang)}"` : ''}>${escapeHtml(body)}</code></pre></div>`;
+}
+
 function renderMarkdown(text) {
-  return text
+  // Strip fenced code blocks (```lang?\n...\n```) BEFORE splitting on blank
+  // lines — fenced blocks frequently contain blank lines that would otherwise
+  // fragment them. Stashed placeholders are restored below.
+  const placeholders = [];
+  const stripped = text.replace(/```([\w+-]*)\n([\s\S]*?)\n```/g, (_m, lang, body) => {
+    const idx = placeholders.length;
+    placeholders.push({ lang, body });
+    return `\u0000CODEBLOCK_${idx}\u0000`;
+  });
+
+  return stripped
     .split('\n\n')
     .map(block => {
       block = block.trim();
       if (!block) return '';
+      // Restore code-block placeholder.
+      const ph = block.match(/^\u0000CODEBLOCK_(\d+)\u0000$/);
+      if (ph) {
+        const { lang, body } = placeholders[+ph[1]];
+        return renderCodeBlock(lang, body);
+      }
       if (block.startsWith('### ')) return `<h3>${escapeHtml(block.slice(4))}</h3>`;
       if (block.startsWith('## ')) return `<h3>${escapeHtml(block.slice(3))}</h3>`;
       if (block.startsWith('# ')) return `<h4>${escapeHtml(block.slice(2))}</h4>`;
@@ -479,6 +504,50 @@ blockquote.bq {
   color: var(--olive);
   margin: 12px 0;
   font-style: normal;
+}
+
+/* ---- CODE BLOCKS ---- */
+.code-block {
+  position: relative;
+  margin: 20px 0;
+  padding: 22px 24px 18px;
+  background: var(--ivory);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  font-family: var(--mono);
+  overflow-x: auto;
+}
+.code-block .cb-lang {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--stone);
+  padding: 1px 6px;
+  border-radius: 2px;
+  background: var(--parchment);
+}
+.code-block pre {
+  margin: 0;
+  padding: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--near-black);
+  white-space: pre;
+  tab-size: 2;
+}
+.code-block code {
+  font-family: var(--mono);
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+  border-radius: 0;
 }
 
 /* ---- COVER ---- */
