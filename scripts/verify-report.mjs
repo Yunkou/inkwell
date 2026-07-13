@@ -289,7 +289,17 @@ function countOverviewComplexity(html) {
   const slice = html.slice(wrapStart, wrapEnd);
   // Skip subsequent diagrams inside chapters (each <div class="diagram-wrap"> opens a new scope).
   const firstWrapEnd = slice.indexOf('</div>');
-  const overviewSvg = slice.slice(0, firstWrapEnd < 0 ? slice.length : firstWrapEnd);
+  const wrapContent = slice.slice(0, firstWrapEnd < 0 ? slice.length : firstWrapEnd);
+  // generate-report.mjs wraps diagrams in <img class="diagram-svg" src="data:image/svg+xml;base64,...">
+  // to stabilize arrow rendering across browsers. Decode the data URL so the
+  // node/edge counters below can still inspect the underlying SVG.
+  let overviewSvg = wrapContent;
+  const dataUrlMatch = wrapContent.match(/src="data:image\/svg\+xml;base64,([A-Za-z0-9+/=]+)"/);
+  if (dataUrlMatch) {
+    try {
+      overviewSvg = Buffer.from(dataUrlMatch[1], 'base64').toString('utf-8');
+    } catch (_) { /* keep wrapContent as-is */ }
+  }
   const nodes = (overviewSvg.match(/<g class="node"/g) || []).length;
   const edges = (overviewSvg.match(/<polyline class="edge"/g) || []).length;
   return { nodes, edges };

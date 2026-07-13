@@ -56,6 +56,23 @@ function sanitizeSvg(svg) {
     .replace(/href\s*=\s*["']javascript:[^"']*["']/gi, 'href="#"');
 }
 
+// Wrap an SVG string in a data: URL inside an <img>. This forces the
+// browser's image-rendering path, which is more consistent for SVG text
+// (dominant-baseline, text-anchor) across Safari/Chrome/WeChat and at
+// different viewport widths — inline <svg> tends to drift on narrow
+// viewports because the same SVG is re-laid-out with the surrounding
+// flex/block context, which can shift text by a few pixels relative
+// to the underlying <path>/<polyline> geometry. See SKILL.md → Diagrams.
+function svgToImgTag(svg) {
+  let b64;
+  try {
+    b64 = Buffer.from(svg, 'utf-8').toString('base64');
+  } catch (_) {
+    b64 = btoa(unescape(encodeURIComponent(svg)));
+  }
+  return `<img class="diagram-svg" src="data:image/svg+xml;base64,${b64}" alt="Diagram" />`;
+}
+
 function renderDiagram(code) {
   try {
     const svg = renderMermaidSVG(code, { ...EDITORIAL_THEME, transparent: false });
@@ -272,7 +289,7 @@ function buildConclusions(conclusions, overviewDiagram) {
 
   const diagram = overviewDiagram
     ? (overviewDiagram.success
-      ? `<div class="diagram-wrap">${overviewDiagram.svg}</div>`
+      ? `<div class="diagram-wrap">${svgToImgTag(overviewDiagram.svg)}</div>`
       : `<div class="diagram-error">Diagram error: ${escapeHtml(overviewDiagram.error)}</div>`)
     : '';
 
@@ -294,7 +311,7 @@ function buildChapter(chapter, index, diagrams, totalChapters) {
     const result = diagrams.get(key);
     if (!result) return '';
     return result.success
-      ? `<div class="diagram-wrap">${result.svg}</div>`
+      ? `<div class="diagram-wrap">${svgToImgTag(result.svg)}</div>`
       : `<div class="diagram-error">Diagram error: ${escapeHtml(result.error)}</div>`;
   }).join('\n');
 
@@ -675,7 +692,12 @@ section { margin-bottom: 64px; }
   border-radius: 8px;
   overflow-x: auto;
 }
-.diagram-wrap svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+.diagram-wrap svg, .diagram-wrap img.diagram-svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
 .diagram-caption {
   font-family: var(--sans);
   font-size: 12px;
